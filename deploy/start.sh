@@ -6,7 +6,8 @@ echo "[start] A aplicar migrações..."
 ./node_modules/.bin/prisma migrate deploy
 
 echo "[start] A garantir o administrador (seed idempotente)..."
-./node_modules/.bin/tsx prisma/seed.ts || echo "[start] seed ignorado (ver mensagem acima)"
+node dist/scripts/seed.js \
+  || echo "[start] ERRO: seed falhou — o administrador pode não existir (ver stack acima)"
 
 echo "[start] A arrancar a API + site..."
 exec node dist/server.js

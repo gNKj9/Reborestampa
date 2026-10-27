@@ -92,21 +92,32 @@ export function createApp(): Express {
   );
 
   app.use(
-    cors({
-      origin: (origin, callback) => {
-        // Pedidos sem Origin (curl, health checks, server-to-server) passam:
-        // não são vetores de CORS. O browser é que impõe a política.
-        if (!origin) return callback(null, true);
-        if (env.CORS_ORIGINS.includes(origin)) return callback(null, true);
+    cors((req, callback) => {
+      const origin = req.header("Origin");
+      const selfOrigin = `${req.protocol}://${req.get("host")}`;
 
+      // Mesma origem (site + API no mesmo host) é sempre permitida; a
+      // allowlist serve para clientes externos legítimos.
+      const allowed =
+        !origin || env.CORS_ORIGINS.includes(origin) || origin === selfOrigin;
+
+      if (!allowed) {
         logger.warn({ origin }, "Origem bloqueada pelo CORS");
-        return callback(null, false);
-      },
-      credentials: true,
-      methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
-      exposedHeaders: ["X-Request-Id", "RateLimit", "RateLimit-Policy", "Retry-After"],
-      maxAge: 600,
+      }
+
+      callback(null, {
+        origin: allowed,
+        credentials: true,
+        methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
+        exposedHeaders: [
+          "X-Request-Id",
+          "RateLimit",
+          "RateLimit-Policy",
+          "Retry-After",
+        ],
+        maxAge: 600,
+      });
     }),
   );
 
