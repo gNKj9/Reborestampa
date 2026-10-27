@@ -78,7 +78,7 @@ export function Hero() {
 
           <p className="mt-6 max-w-[52ch] text-[0.98rem] leading-relaxed text-ink-soft">
             Produção e comercialização de estampagem à peça em Vila&nbsp;das&nbsp;Aves.
-            Lacas, foil, borracha, plastisol, glitter e base de água — até 12
+            Lacas, foil, borracha, plastisol, glitter e base de água até 12
             cores, em matérias-primas sintéticas e misturas, para clientes
             nacionais e internacionais.
           </p>

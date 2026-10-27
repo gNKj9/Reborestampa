@@ -36,7 +36,7 @@ export function Production() {
 
           <p className="mt-5 max-w-[52ch] text-[0.93rem] leading-relaxed text-ink-soft">
             A estampagem é feita à peça, em Vila das Aves. Cada trabalho é
-            ajustado ao tecido — sintéticos e misturas — e verificado antes de
+            ajustado ao tecido sintéticos e misturas e verificado antes de
             sair para o cliente.
           </p>
 
