@@ -5,6 +5,19 @@ import {
   type PublicContactRequest,
 } from "../models/contact.schema.js";
 import { contactRepository } from "../repositories/contact.repository.js";
+
+const STATUS_LABELS: Record<ContactStatus, string> = {
+  NEW: "Novo",
+  READ: "Lido",
+  REPLIED: "Respondido",
+  ARCHIVED: "Arquivado",
+};
+
+/** Célula CSV: aspas duplicadas e quebras de linha normalizadas. */
+function csvCell(value: string | null | undefined): string {
+  const text = (value ?? "").replace(/\r?\n/g, " ").trim();
+  return `"${text.replaceAll('"', '""')}"`;
+}
 import { AppError } from "../utils/AppError.js";
 import { auditService, type AuditActor } from "./audit.service.js";
 import { emailService } from "./email.service.js";
@@ -54,6 +67,7 @@ export const contactService = {
 
   async list(params: {
     status?: ContactStatus;
+    q?: string;
     page: number;
     limit: number;
   }): Promise<{
@@ -67,10 +81,11 @@ export const contactService = {
     const [{ items, total }, grouped] = await Promise.all([
       contactRepository.list({
         status: params.status,
+        q: params.q,
         skip,
         take: params.limit,
       }),
-      contactRepository.countByStatus(),
+      contactRepository.countByStatus(params.q),
     ]);
 
     const counts: Record<ContactStatus, number> = {
@@ -90,6 +105,82 @@ export const contactService = {
       limit: params.limit,
       counts,
     };
+  },
+
+  /**
+   * Exportação CSV do que está filtrado. Teto de 5000 linhas: acima disso o
+   * ficheiro deixa de ser útil numa folha de cálculo e passa a ser um risco.
+   */
+  async exportCsv(params: { status?: ContactStatus; q?: string }): Promise<string> {
+    const rows = await contactRepository.listForExport({
+      status: params.status,
+      q: params.q,
+      take: 5000,
+    });
+
+    const header = [
+      "Data",
+      "Estado",
+      "Nome",
+      "Email",
+      "Empresa",
+      "Telefone",
+      "Mensagem",
+      "Nota interna",
+      "Tratado em",
+    ];
+
+    const lines = rows.map((row) =>
+      [
+        row.createdAt.toISOString(),
+        STATUS_LABELS[row.status],
+        row.name,
+        row.email,
+        row.company ?? "",
+        row.phone ?? "",
+        row.message,
+        row.internalNote ?? "",
+        row.handledAt?.toISOString() ?? "",
+      ]
+        .map(csvCell)
+        .join(";"),
+    );
+
+    // BOM para o Excel abrir os acentos corretamente.
+    return `\uFEFF${[header.map(csvCell).join(";"), ...lines].join("\r\n")}`;
+  },
+
+  async updateNote(
+    id: string,
+    note: string,
+    actor: AuditActor,
+    ip?: string,
+  ): Promise<PublicContactRequest> {
+    const existing = await contactRepository.findById(id);
+    if (!existing) {
+      throw AppError.notFound("Pedido não encontrado");
+    }
+
+    if (!actor.id) {
+      throw AppError.unauthorized();
+    }
+
+    const updated = await contactRepository.updateNote(id, {
+      internalNote: note.trim() === "" ? null : note,
+      noteUpdatedById: actor.id,
+    });
+
+    // O conteúdo da nota é interno e não vai para a auditoria.
+    await auditService.record({
+      actor,
+      action: "contact.note_updated",
+      entity: "contact",
+      entityId: id,
+      metadata: { hasNote: Boolean(note.trim()) },
+      ip,
+    });
+
+    return toPublicContact(updated);
   },
 
   async updateStatus(

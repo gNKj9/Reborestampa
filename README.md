@@ -253,8 +253,10 @@ menos 32 caracteres.
 | PATCH | `/api/users/:id` | ADMIN | altera papel / ativação |
 | POST | `/api/users/:id/reset-password` | ADMIN | repõe a palavra-passe e termina as sessões da conta |
 | POST | `/api/contact` | público (rate limit + honeypot) | formulário de contacto do site |
-| GET | `/api/contact-requests` | ADMIN, EDITOR | caixa de entrada com contagens por estado |
+| GET | `/api/contact-requests` | ADMIN, EDITOR | caixa de entrada; aceita `status`, `q` (pesquisa) e paginação |
+| GET | `/api/contact-requests/export.csv` | ADMIN, EDITOR | exporta o filtro atual (máx. 5000 linhas, com BOM) |
 | PATCH | `/api/contact-requests/:id` | ADMIN, EDITOR | muda o estado (`NEW`, `READ`, `REPLIED`, `ARCHIVED`) |
+| PATCH | `/api/contact-requests/:id/note` | ADMIN, EDITOR | guarda a nota interna (2000 caracteres, auditorizada) |
 | GET | `/api/audit` | ADMIN | histórico de ações administrativas (paginado) |
 
 Erros seguem sempre o mesmo formato:

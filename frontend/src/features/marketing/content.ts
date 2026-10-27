@@ -57,7 +57,7 @@ export const values = [
 
 export const contact = {
   legalName: "Reborestampa — Estamparia Têxtil",
-  nif: "502890000",
+  nif: "502890800",
   street: "Rua Silva Araújo, 1145",
   postal: "4795-120 Vila das Aves",
   municipality: "Santo Tirso, Portugal",

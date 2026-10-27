@@ -29,6 +29,8 @@ export type ContactRequest = {
   message: string;
   status: ContactStatus;
   handledAt: string | null;
+  internalNote: string | null;
+  noteUpdatedAt: string | null;
   createdAt: string;
 };
 

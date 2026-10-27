@@ -33,12 +33,21 @@ export const updateContactSchema = z
 
 export const listContactsQuerySchema = z.object({
   status: contactStatusSchema.optional(),
+  q: z.string().trim().max(120).optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+/** Nota interna: vazia limpa a nota. */
+export const updateContactNoteSchema = z
+  .object({
+    note: z.string().trim().max(2000, "Máximo 2000 caracteres"),
+  })
+  .strict();
+
 export type CreateContactInput = z.infer<typeof createContactSchema>;
 export type UpdateContactInput = z.infer<typeof updateContactSchema>;
+export type UpdateContactNoteInput = z.infer<typeof updateContactNoteSchema>;
 
 export type PublicContactRequest = {
   id: string;
@@ -49,6 +58,8 @@ export type PublicContactRequest = {
   message: string;
   status: ContactStatus;
   handledAt: string | null;
+  internalNote: string | null;
+  noteUpdatedAt: string | null;
   createdAt: string;
 };
 
@@ -61,6 +72,8 @@ type ContactRecord = {
   message: string;
   status: ContactStatus;
   handledAt: Date | null;
+  internalNote: string | null;
+  noteUpdatedAt: Date | null;
   createdAt: Date;
 };
 
@@ -74,6 +87,8 @@ export function toPublicContact(request: ContactRecord): PublicContactRequest {
     message: request.message,
     status: request.status,
     handledAt: request.handledAt?.toISOString() ?? null,
+    internalNote: request.internalNote,
+    noteUpdatedAt: request.noteUpdatedAt?.toISOString() ?? null,
     createdAt: request.createdAt.toISOString(),
   };
 }

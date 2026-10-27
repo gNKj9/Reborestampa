@@ -152,5 +152,23 @@ export async function apiRequest<T>(
   return (await response.json()) as T;
 }
 
+/** Descarrega um recurso binário autenticado (ex.: CSV), com refresh em 401. */
+export async function apiFetchBlob(path: string): Promise<Blob> {
+  let response = await request(path, { method: "GET" });
+
+  if (response.status === 401) {
+    const session = await refreshSession();
+    if (session) {
+      response = await request(path, { method: "GET" });
+    }
+  }
+
+  if (!response.ok) {
+    throw await toApiError(response);
+  }
+
+  return response.blob();
+}
+
 export { API_URL };
 export type { PublicUser, SessionPayload };

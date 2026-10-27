@@ -10,8 +10,24 @@ const contactSelect = {
   message: true,
   status: true,
   handledAt: true,
+  internalNote: true,
+  noteUpdatedAt: true,
   createdAt: true,
 } as const;
+
+/** Filtro de pesquisa livre: nome, email, empresa ou mensagem. */
+function searchFilter(q?: string) {
+  if (!q) return {};
+  const contains = { contains: q, mode: "insensitive" as const };
+  return {
+    OR: [
+      { name: contains },
+      { email: contains },
+      { company: contains },
+      { message: contains },
+    ],
+  };
+}
 
 export const contactRepository = {
   create(data: {
@@ -35,10 +51,14 @@ export const contactRepository = {
 
   async list(params: {
     status?: ContactStatus;
+    q?: string;
     skip: number;
     take: number;
   }) {
-    const where = params.status ? { status: params.status } : {};
+    const where = {
+      ...(params.status ? { status: params.status } : {}),
+      ...searchFilter(params.q),
+    };
 
     const [items, total] = await prisma.$transaction([
       prisma.contactRequest.findMany({
@@ -72,10 +92,35 @@ export const contactRepository = {
     });
   },
 
-  countByStatus() {
+  countByStatus(q?: string) {
     return prisma.contactRequest.groupBy({
       by: ["status"],
+      where: searchFilter(q),
       _count: { _all: true },
+    });
+  },
+
+  /** Exportação: sem paginação, com teto de segurança. */
+  listForExport(params: { status?: ContactStatus; q?: string; take: number }) {
+    return prisma.contactRequest.findMany({
+      where: {
+        ...(params.status ? { status: params.status } : {}),
+        ...searchFilter(params.q),
+      },
+      select: contactSelect,
+      orderBy: { createdAt: "desc" },
+      take: params.take,
+    });
+  },
+
+  updateNote(
+    id: string,
+    data: { internalNote: string | null; noteUpdatedById: string },
+  ) {
+    return prisma.contactRequest.update({
+      where: { id },
+      data: { ...data, noteUpdatedAt: new Date() },
+      select: contactSelect,
     });
   },
 };

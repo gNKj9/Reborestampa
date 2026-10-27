@@ -44,6 +44,7 @@ model User {
   updatedAt         DateTime  @updatedAt @map("updated_at")
   refreshTokens     RefreshToken[]
   handledRequests   ContactRequest[] @relation("HandledBy")
+  notedRequests     ContactRequest[] @relation("NoteBy")
 
   @@index([role])
   @@map("users")
@@ -81,10 +82,14 @@ model ContactRequest {
   status      ContactStatus @default(NEW)
   handledAt   DateTime?     @map("handled_at")
   handledById String?       @map("handled_by_id") @db.Uuid
+  internalNote     String?  @map("internal_note") @db.VarChar(2000)
+  noteUpdatedAt    DateTime? @map("note_updated_at")
+  noteUpdatedById  String?  @map("note_updated_by_id") @db.Uuid
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
   handledBy User? @relation("HandledBy", fields: [handledById], references: [id], onDelete: SetNull)
+  noteUpdatedBy User? @relation("NoteBy", fields: [noteUpdatedById], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt])
   @@index([createdAt])

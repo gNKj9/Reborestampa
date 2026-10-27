@@ -5,6 +5,7 @@ import { contactRateLimiter } from "../middlewares/rateLimit.js";
 import { validateBody, validateParams } from "../middlewares/validate.js";
 import {
   createContactSchema,
+  updateContactNoteSchema,
   updateContactSchema,
 } from "../models/contact.schema.js";
 import {
@@ -28,6 +29,15 @@ export const contactAdminRouter = Router();
 contactAdminRouter.use(authenticate, authorize("ADMIN", "EDITOR"));
 
 contactAdminRouter.get("/", contactController.list);
+
+contactAdminRouter.get("/export.csv", contactController.exportCsv);
+
+contactAdminRouter.patch(
+  "/:id/note",
+  validateParams(contactIdParamsSchema),
+  validateBody(updateContactNoteSchema),
+  contactController.updateNote,
+);
 
 contactAdminRouter.patch(
   "/:id",

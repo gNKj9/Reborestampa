@@ -118,6 +118,37 @@ expect 422 "$(code -H "authorization: Bearer $TOKEN_A" -X PATCH -H 'content-type
 expect 404 "$(code -H "authorization: Bearer $TOKEN_A" -X PATCH -H 'content-type: application/json' \
   -d '{"status":"READ"}' "$API/api/contact-requests/00000000-0000-4000-8000-000000000000")" "pedido inexistente → 404"
 
+echo "== Pesquisa, nota interna e CSV =="
+expect 200 "$(code -H "authorization: Bearer $TOKEN_A" "$API/api/contact-requests?q=Ana")" \
+  "pesquisa por nome"
+FOUND="$(jget total)"
+assert "$( [ "$FOUND" -ge 1 ] && echo 1 || echo 0 )" "pesquisa encontra o pedido (total $FOUND)"
+
+expect 200 "$(code -H "authorization: Bearer $TOKEN_A" -X PATCH -H 'content-type: application/json' \
+  -d '{"note":"Prova de cor pedida; responder até sexta."}' \
+  "$API/api/contact-requests/$REQUEST_ID/note")" "guardar nota interna"
+NOTE="$(jget request.internalNote)"
+case "$NOTE" in
+  *"Prova de cor"*) ok "nota devolvida no pedido" ;;
+  *) fail=$((fail + 1)); printf '  FALHA nota inesperada: %s\n' "$NOTE" ;;
+esac
+
+expect 200 "$(code -H "authorization: Bearer $TOKEN_A" "$API/api/contact-requests?q=zzz-inexistente")" \
+  "pesquisa sem resultados"
+EMPTY="$(jget total)"
+assert "$( [ "$EMPTY" = "0" ] && echo 1 || echo 0 )" "pesquisa vazia devolve 0"
+
+CSV_HEADERS="$(curl -s -D - -o /dev/null -H "authorization: Bearer $TOKEN_A" "$API/api/contact-requests/export.csv")"
+case "$CSV_HEADERS" in
+  *"text/csv"*) ok "CSV com content-type correto" ;;
+  *) fail=$((fail + 1)); printf '  FALHA content-type do CSV\n' ;;
+esac
+expect 200 "$(code -H "authorization: Bearer $TOKEN_A" "$API/api/contact-requests/export.csv")" "exportar CSV"
+case "$(cat "$OUT")" in
+  *"Nome"*"Ana Ribeiro"*) ok "CSV contém o pedido" ;;
+  *) fail=$((fail + 1)); printf '  FALHA conteúdo do CSV\n' ;;
+esac
+
 echo "== Gestão de utilizadores =="
 expect 200 "$(code -H "authorization: Bearer $TOKEN_A" -X PATCH -H 'content-type: application/json' \
   -d '{"role":"EDITOR"}' "$API/api/users/$VIEWER_ID")" "promover a EDITOR"
@@ -188,7 +219,7 @@ data = json.load(open(sys.argv[1]))
 print(" ".join(sorted({item["action"] for item in data["items"]})))
 PY
 )"
-for action in user.created user.role_changed user.password_reset auth.password_changed contact.status_changed; do
+for action in user.created user.role_changed user.password_reset auth.password_changed contact.status_changed contact.note_updated; do
   case " $ACTIONS " in
     *" $action "*) ok "registo presente: $action" ;;
     *) fail=$((fail + 1)); printf '  FALHA registo ausente: %s (vistos: %s)\n' "$action" "$ACTIONS" ;;
