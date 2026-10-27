@@ -17,7 +17,7 @@ export default function LoginPage() {
           aria-hidden="true"
         />
 
-        <Logo />
+        <Logo onDark />
 
         <div className="relative max-w-[24ch]">
           <p className="text-balance font-display text-[2rem] leading-[1.15]">

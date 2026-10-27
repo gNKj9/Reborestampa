@@ -6,6 +6,7 @@ import { Logo } from "@/components/Logo";
 const NAV = [
   { href: "/#tecnicas", label: "Técnicas" },
   { href: "/#processo", label: "Processo" },
+  { href: "/#producao", label: "Produção" },
   { href: "/#empresa", label: "Empresa" },
   { href: "/#contactos", label: "Contactos" },
 ];
@@ -13,7 +14,7 @@ const NAV = [
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line/70 bg-paper/85 backdrop-blur-md">
-      <Container className="grid h-[72px] grid-cols-[1fr_auto_1fr] items-center gap-4">
+      <Container className="flex h-[72px] items-center justify-between gap-4 md:grid md:grid-cols-[1fr_auto_1fr]">
         <Link href="/" aria-label="Reborestampa — início" className="justify-self-start">
           <Logo />
         </Link>

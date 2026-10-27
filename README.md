@@ -23,6 +23,20 @@ não está implementado — é o próximo passo.
 
 ---
 
+## Marca e imagens
+
+- `frontend/public/brand/logo.webp` — lockup oficial (recortado, fundo transparente)
+- `frontend/public/brand/mark.webp` / `mark-192.webp` — símbolo (círculo com o "R" e salpicos)
+- `frontend/src/app/icon.png` — favicon, marca sobre fundo papel
+- `frontend/public/photos/producao.jpg` / `.webp` — fotografia de produção (4:5)
+- `frontend/public/photos/og.jpg` — imagem de partilha (1200×630, Open Graph)
+
+No cabeçalho a marca aparece como símbolo + nome composto com a tipografia do site
+(legível a qualquer tamanho); o rodapé mostra o lockup completo. A cor de acento do
+site (magenta `#c2185b`) foi alinhada com o logotipo.
+
+---
+
 ## Estrutura
 
 ```text

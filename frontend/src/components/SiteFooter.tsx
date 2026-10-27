@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Container } from "@/components/Surface";
-import { Logo } from "@/components/Logo";
 
 const LINKEDIN =
   "https://www.linkedin.com/company/reborestampa-estamparia-t%C3%AAxtil/";
@@ -10,8 +9,16 @@ export function SiteFooter() {
     <footer className="border-t border-line/70 bg-paper-deep/60">
       <Container className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-4">
-          <Logo />
-          <p className="max-w-[22ch] text-[0.82rem] leading-relaxed text-ink-soft">
+          <img
+            src="/brand/logo.webp"
+            alt="Reborestampa — Estamparia Têxtil"
+            width={760}
+            height={554}
+            loading="lazy"
+            decoding="async"
+            className="h-auto w-[150px]"
+          />
+          <p className="max-w-[24ch] text-[0.82rem] leading-relaxed text-ink-soft">
             Estamparia à peça desde 1992. Produção para clientes nacionais e
             internacionais.
           </p>
