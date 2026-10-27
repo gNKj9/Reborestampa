@@ -104,10 +104,17 @@ export const refreshTokenRepository = {
     });
   },
 
-  /** Usado na deteção de reutilização: mata toda a família de tokens. */
-  revokeAllForUser(userId: string) {
+  /**
+   * Usado na deteção de reutilização e ao mudar a palavra-passe: mata toda a
+   * família de tokens. `exceptTokenHash` mantém viva a sessão que fez o pedido.
+   */
+  revokeAllForUser(userId: string, exceptTokenHash?: string) {
     return prisma.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
+      where: {
+        userId,
+        revokedAt: null,
+        ...(exceptTokenHash ? { tokenHash: { not: exceptTokenHash } } : {}),
+      },
       data: { revokedAt: new Date() },
     });
   },

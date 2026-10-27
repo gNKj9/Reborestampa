@@ -2,9 +2,11 @@ import type { Request, Response } from "express";
 import { z } from "zod";
 import {
   createUserSchema,
+  resetPasswordSchema,
   updateUserRoleSchema,
 } from "../models/user.schema.js";
 import { userService } from "../services/user.service.js";
+import { authService } from "../services/auth.service.js";
 import { AppError } from "../utils/AppError.js";
 
 export const listUsersQuerySchema = z.object({
@@ -36,13 +38,37 @@ export const userController = {
       throw AppError.badRequest("Não podes desativar a tua própria conta");
     }
 
-    const user = await userService.updateAccess(req.params.id, input);
+    if (!req.auth) {
+      throw AppError.unauthorized();
+    }
+
+    const user = await userService.updateAccess(
+      req.params.id,
+      input,
+      req.auth.userId,
+    );
+    res.status(200).json({ user });
+  },
+
+  async resetPassword(
+    req: Request<{ id: string }>,
+    res: Response,
+  ): Promise<void> {
+    if (!req.auth) {
+      throw AppError.unauthorized();
+    }
+
+    const input = resetPasswordSchema.parse(req.body);
+    const user = await userService.resetPassword(
+      req.params.id,
+      input.newPassword,
+      req.auth.userId,
+    );
     res.status(200).json({ user });
   },
 
   async create(req: Request, res: Response): Promise<void> {
     const input = createUserSchema.parse(req.body);
-    const { authService } = await import("../services/auth.service.js");
     const user = await authService.register(input);
     res.status(201).json({ user });
   },

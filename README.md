@@ -140,7 +140,12 @@ estiver noutro endereço.
 | backend  | `npm run db:seed`      | cria o administrador inicial (idempotente)    |
 | backend  | `npm run db:studio`    | Prisma Studio                                 |
 | backend  | `bash tests/smoke.sh`  | smoke test end-to-end (precisa da API a correr) |
+| backend  | `bash tests/smoke-admin.sh` | contactos, papéis e palavras-passe (precisa de `ADMIN_PASSWORD`) |
 | frontend | `npm run dev` / `build`| desenvolvimento / build de produção           |
+
+Os testes de administração alteram dados: use uma base de desenvolvimento. O
+`smoke-admin.sh` promove contas a EDITOR, repõe palavras-passe e muda a do
+administrador no fim — em bases partilhadas, recrie o ambiente a seguir.
 
 ---
 
@@ -237,10 +242,16 @@ menos 32 caracteres.
 | POST | `/api/auth/refresh` | cookie de refresh | rotaciona o refresh token |
 | POST | `/api/auth/logout` | cookie de refresh | revoga e limpa o cookie |
 | GET | `/api/auth/me` | autenticado | perfil atual |
+| PATCH | `/api/auth/password` | autenticado | altera a própria palavra-passe (exige a atual) |
 | POST | `/api/auth/register` | ADMIN | cria conta (não há registo público) |
 | GET | `/api/users` | ADMIN | lista paginada |
+| POST | `/api/users` | ADMIN | cria conta |
 | GET | `/api/users/:id` | ADMIN | detalhe |
 | PATCH | `/api/users/:id` | ADMIN | altera papel / ativação |
+| POST | `/api/users/:id/reset-password` | ADMIN | repõe a palavra-passe e termina as sessões da conta |
+| POST | `/api/contact` | público (rate limit + honeypot) | formulário de contacto do site |
+| GET | `/api/contact-requests` | ADMIN, EDITOR | caixa de entrada com contagens por estado |
+| PATCH | `/api/contact-requests/:id` | ADMIN, EDITOR | muda o estado (`NEW`, `READ`, `REPLIED`, `ARCHIVED`) |
 
 Erros seguem sempre o mesmo formato:
 
@@ -258,8 +269,9 @@ foi revogado.
 
 **Fronteira**
 - CORS com allowlist explícita (sem wildcards) e `credentials: true`.
-- Rate limiting global por IP, reforçado no login (chave IP + email,
-  `skipSuccessfulRequests`) e na renovação de sessão.
+- Rate limiting global por IP, reforçado no login (duas barreiras: IP + email e
+  só IP, `skipSuccessfulRequests`), na renovação de sessão e no formulário
+  público de contacto (5 pedidos por 10 minutos).
 - Validação de todo o input com Zod antes de chegar aos serviços; schemas de
   corpo `.strict()` rejeitam campos desconhecidos.
 - Limite de payload `100kb`; `x-powered-by` desativado; `trust proxy` limitado.
@@ -277,6 +289,13 @@ foi revogado.
   guarda-se só o SHA-256.
 - Rotação obrigatória a cada renovação, com deteção de reutilização: a reutilização
   de um token já rotacionado revoga toda a família e obriga a novo login.
+- **Verificação na base de dados a cada pedido autenticado**: desativar uma conta,
+  mudar-lhe o papel ou alterar a palavra-passe tem efeito imediato (não espera
+  pelos 15 minutos do access token). Custa uma leitura por chave primária.
+- Alteração da própria palavra-passe exige a atual e termina as **outras** sessões;
+  a reposição por um administrador termina **todas** as sessões dessa conta.
+- Duas travas de administração: ninguém altera o próprio papel e o sistema recusa
+  remover o último administrador ativo.
 - RBAC por middleware, declarado rota a rota (`ADMIN`, `EDITOR`, `VIEWER`).
 
 **Operação**
@@ -298,8 +317,9 @@ foi revogado.
   sempre feita na API; o frontend nunca é fonte de verdade.
 - **CSP do Next.js**: para já só há headers básicos (`next.config.ts`). Uma CSP
   completa exige nonce por pedido — próximo passo antes de produção.
-- **Sem verificação de email, recuperação de password ou MFA** — fora do âmbito
-  desta base.
+- **Sem verificação de email, recuperação por email ou MFA** — a palavra-passe
+  muda-se com a atual; se for esquecida, um administrador repõe. Recuperação
+  autónoma exigiria um serviço de email.
 - **Textos do site**: os factos vêm do perfil oficial da empresa (fundação em 1992,
   sede, 12 cores, técnicas). As descrições de processo são proposta editorial a
   validar; não foram inventados contactos (telefone/email) porque não há fonte
@@ -315,5 +335,9 @@ foi revogado.
 1. Modelar o domínio: `Cliente`, `Encomenda`, `Referência`, `Prova`, `Tecnica`.
 2. Fichas técnicas por técnica de estampagem (consumos, cores, tempos).
 3. Auditoria de ações administrativas e histórico de alterações.
-4. CI: `tsc`, build do frontend, `tests/smoke.sh` contra um Postgres de serviço.
+4. CI: `tsc`, build do frontend, `tests/smoke.sh` e `tests/smoke-admin.sh` contra
+   um Postgres de serviço.
 5. CSP com nonce, backups da base de dados e observabilidade (métricas + alertas).
+6. Política de privacidade e tratamento de dados (RGPD) antes de recolher
+   contactos em produção — o formulário já guarda nome, email, empresa, telefone
+   e mensagem.

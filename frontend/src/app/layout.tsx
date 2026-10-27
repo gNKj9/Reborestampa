@@ -3,6 +3,9 @@ import "@/assets/globals.css";
 import { AuthProvider } from "@/features/auth/auth-context";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://reborestampa.onrender.com",
+  ),
   title: {
     default: "Reborestampa — Estamparia Têxtil",
     template: "%s · Reborestampa",

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { validateBody, validateParams } from "../middlewares/validate.js";
-import { updateUserRoleSchema } from "../models/user.schema.js";
+import { resetPasswordSchema, createUserSchema, updateUserRoleSchema } from "../models/user.schema.js";
 import {
   userController,
   userIdParamsSchema,
@@ -15,6 +15,8 @@ userRouter.use(authenticate, authorize("ADMIN"));
 
 userRouter.get("/", userController.list);
 
+userRouter.post("/", validateBody(createUserSchema), userController.create);
+
 userRouter.get(
   "/:id",
   validateParams(userIdParamsSchema),
@@ -26,4 +28,11 @@ userRouter.patch(
   validateParams(userIdParamsSchema),
   validateBody(updateUserRoleSchema),
   userController.update,
+);
+
+userRouter.post(
+  "/:id/reset-password",
+  validateParams(userIdParamsSchema),
+  validateBody(resetPasswordSchema),
+  userController.resetPassword,
 );

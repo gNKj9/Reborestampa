@@ -22,17 +22,28 @@ enum Role {
   VIEWER
 }
 
+/// Estado de um pedido de contacto recebido pelo site.
+/// NEW -> acabou de chegar; READ -> visto; REPLIED -> respondido; ARCHIVED -> fechado.
+enum ContactStatus {
+  NEW
+  READ
+  REPLIED
+  ARCHIVED
+}
+
 model User {
-  id             String    @id @default(uuid()) @db.Uuid
-  name           String    @db.VarChar(120)
-  email          String    @unique @db.VarChar(255)
-  passwordHash   String    @map("password_hash") @db.VarChar(255)
-  role           Role      @default(VIEWER)
-  isActive       Boolean   @default(true) @map("is_active")
-  lastLoginAt    DateTime? @map("last_login_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  refreshTokens  RefreshToken[]
+  id                String    @id @default(uuid()) @db.Uuid
+  name              String    @db.VarChar(120)
+  email             String    @unique @db.VarChar(255)
+  passwordHash      String    @map("password_hash") @db.VarChar(255)
+  role              Role      @default(VIEWER)
+  isActive          Boolean   @default(true) @map("is_active")
+  lastLoginAt       DateTime? @map("last_login_at")
+  passwordChangedAt DateTime? @map("password_changed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  refreshTokens     RefreshToken[]
+  handledRequests   ContactRequest[] @relation("HandledBy")
 
   @@index([role])
   @@map("users")
@@ -56,4 +67,26 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+/// Pedidos de contacto submetidos pelo site público.
+/// Guarda apenas o necessário para responder; não é um CRM.
+model ContactRequest {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String        @db.VarChar(120)
+  email       String        @db.VarChar(255)
+  company     String?       @db.VarChar(160)
+  phone       String?       @db.VarChar(40)
+  message     String        @db.VarChar(2000)
+  status      ContactStatus @default(NEW)
+  handledAt   DateTime?     @map("handled_at")
+  handledById String?       @map("handled_by_id") @db.Uuid
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  handledBy User? @relation("HandledBy", fields: [handledById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@map("contact_requests")
 }

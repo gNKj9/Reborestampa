@@ -28,4 +28,15 @@ export const authService = {
     const response = await apiRequest<{ user: PublicUser }>("/auth/me");
     return response.user;
   },
+
+  async changePassword(input: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<PublicUser> {
+    const response = await apiRequest<{ user: PublicUser }>("/auth/password", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+    return response.user;
+  },
 };

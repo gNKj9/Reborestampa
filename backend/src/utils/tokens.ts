@@ -13,6 +13,7 @@ export type AccessTokenPayload = {
   sub: string;
   email: string;
   role: Role;
+  iat: number;
   type: "access";
 };
 
@@ -101,6 +102,7 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
     sub: payload.sub,
     email: payload.email,
     role: payload.role as Role,
+    iat: typeof payload.iat === "number" ? payload.iat : 0,
     type: "access",
   };
 }

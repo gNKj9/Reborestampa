@@ -119,8 +119,8 @@ curl -s -b "$COOKIES" -c "$COOKIES" -o /dev/null -w 'logout=%{http_code}\n' -X P
 curl -s -o "$TMP/after.json" -w 'refresh após logout=%{http_code}\n' \
   -X POST -H "Cookie: rb_refresh=$NEW_TOKEN" "$API/auth/refresh"
 
-say "14. rate limit no login (12 falhas seguidas)"
-for _ in $(seq 1 12); do
+say "14. rate limit no login (25 falhas, email diferente em cada)"
+for _ in $(seq 1 25); do
   curl -s -o /dev/null -w "%{http_code} " -H "Content-Type: application/json" \
     -d "{\"email\":\"brute+$(date +%s)@example.com\",\"password\":\"ErradaPass1\"}" \
     "$API/auth/login"

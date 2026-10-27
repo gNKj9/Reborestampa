@@ -48,6 +48,27 @@ export const loginRateLimiter = rateLimit({
   },
 });
 
+/**
+ * Segunda barreira, só por IP: sem ela, variar o email a cada tentativa
+ * escaparia ao limite anterior e permitiria password spraying distribuído
+ * por muitas contas a partir da mesma origem.
+ */
+export const loginIpRateLimiter = rateLimit({
+  windowMs: env.AUTH_RATE_LIMIT_WINDOW_MS,
+  limit: env.AUTH_RATE_LIMIT_MAX * 2,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req: Request) => ipKeyGenerator(req.ip ?? "unknown"),
+  handler: (_req, res) => {
+    res.status(429).json(
+      jsonLimitResponse(
+        "Demasiadas tentativas de autenticação a partir desta rede. Aguarda alguns minutos.",
+      ),
+    );
+  },
+});
+
 /** Renovação de sessão: limite mais folgado, mas continua limitado. */
 export const refreshRateLimiter = rateLimit({
   windowMs: env.AUTH_RATE_LIMIT_WINDOW_MS,
@@ -55,6 +76,27 @@ export const refreshRateLimiter = rateLimit({
   standardHeaders: "draft-8",
   legacyHeaders: false,
   keyGenerator: (req: Request) => ipKeyGenerator(req.ip ?? "unknown"),
+});
+
+/**
+ * Formulário público de contacto: poucos pedidos por IP e por janela.
+ * Um humano escreve uma vez; um bot escreve cem.
+ */
+export const contactRateLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => ipKeyGenerator(req.ip ?? "unknown"),
+  handler: (_req, res) => {
+    res
+      .status(429)
+      .json(
+        jsonLimitResponse(
+          "Demasiados pedidos. Aguarda alguns minutos antes de voltar a escrever.",
+        ),
+      );
+  },
 });
 
 export function rateLimitError(): AppError {

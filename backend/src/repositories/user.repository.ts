@@ -10,6 +10,7 @@ const publicUserSelect = {
   role: true,
   isActive: true,
   lastLoginAt: true,
+  passwordChangedAt: true,
   createdAt: true,
 } as const;
 
@@ -23,6 +24,27 @@ export const userRepository = {
     return prisma.user.findUnique({
       where: { email },
       select: authUserSelect,
+    });
+  },
+
+  findByIdWithHash(id: string) {
+    return prisma.user.findUnique({
+      where: { id },
+      select: authUserSelect,
+    });
+  },
+
+  /** Sessão: o mínimo para autenticar cada pedido e validar o papel atual. */
+  findSessionById(id: string) {
+    return prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        isActive: true,
+        passwordChangedAt: true,
+      },
     });
   },
 
@@ -82,6 +104,25 @@ export const userRepository = {
       where: { id },
       data,
       select: publicUserSelect,
+    });
+  },
+
+  updatePassword(id: string, passwordHash: string) {
+    return prisma.user.update({
+      where: { id },
+      data: { passwordHash, passwordChangedAt: new Date() },
+      select: publicUserSelect,
+    });
+  },
+
+  /** Quantos administradores ativos existem, opcionalmente excluindo um. */
+  countActiveAdmins(excludeId?: string) {
+    return prisma.user.count({
+      where: {
+        role: "ADMIN",
+        isActive: true,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
     });
   },
 };

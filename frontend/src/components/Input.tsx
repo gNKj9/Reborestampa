@@ -7,7 +7,7 @@ export function Input({ className, ...props }: InputProps) {
   return (
     <input
       className={cn(
-        "w-full rounded-lg border border-line bg-white/70 px-4 py-3 text-[0.95rem] text-ink",
+        "w-full rounded-lg border border-ink/20 bg-white/70 px-4 py-3 text-[0.95rem] text-ink",
         "placeholder:text-ink-muted/70",
         "transition-colors focus:border-accent focus:bg-white focus:outline-none",
         /* Só marca erro quando a validação já correu (aria-invalid), não em campos

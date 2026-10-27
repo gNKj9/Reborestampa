@@ -6,7 +6,7 @@ import { roleSchema, type Role } from "./role.js";
  * passwordHash) para utilizadores.
  */
 
-const passwordSchema = z
+export const passwordSchema = z
   .string()
   .min(12, "A palavra-passe deve ter pelo menos 12 caracteres")
   .max(128, "A palavra-passe não pode exceder 128 caracteres")
@@ -38,13 +38,33 @@ export const createUserSchema = z
 
 export const updateUserRoleSchema = z
   .object({
-    role: roleSchema,
+    role: roleSchema.optional(),
     isActive: z.boolean().optional(),
+  })
+  .strict()
+  .refine((value) => value.role !== undefined || value.isActive !== undefined, {
+    message: "Indica o papel ou o estado a alterar",
+  });
+
+/** Alteração da própria palavra-passe: exige a atual. */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Indica a palavra-passe atual").max(128),
+    newPassword: passwordSchema,
+  })
+  .strict();
+
+/** Reposição por um administrador: não conhece a palavra-passe antiga. */
+export const resetPasswordSchema = z
+  .object({
+    newPassword: passwordSchema,
   })
   .strict();
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserRoleInput = z.infer<typeof updateUserRoleSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 /** Utilizador exposto pela API — sem hash, sem campos internos. */
 export type PublicUser = {
@@ -54,6 +74,7 @@ export type PublicUser = {
   role: Role;
   isActive: boolean;
   lastLoginAt: string | null;
+  passwordChangedAt: string | null;
   createdAt: string;
 };
 
@@ -64,6 +85,7 @@ type UserRecord = {
   role: Role;
   isActive: boolean;
   lastLoginAt: Date | null;
+  passwordChangedAt: Date | null;
   createdAt: Date;
 };
 
@@ -75,6 +97,7 @@ export function toPublicUser(user: UserRecord): PublicUser {
     role: user.role,
     isActive: user.isActive,
     lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
+    passwordChangedAt: user.passwordChangedAt?.toISOString() ?? null,
     createdAt: user.createdAt.toISOString(),
   };
 }
@@ -87,6 +110,7 @@ export const authUserSelect = {
   role: true,
   isActive: true,
   lastLoginAt: true,
+  passwordChangedAt: true,
   createdAt: true,
   passwordHash: true,
 } as const;

@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { env } from "../config/env.js";
 import { loginSchema, type LoginInput } from "../models/auth.schema.js";
-import { createUserSchema, type CreateUserInput } from "../models/user.schema.js";
+import { createUserSchema, changePasswordSchema, type CreateUserInput } from "../models/user.schema.js";
 import { authService } from "../services/auth.service.js";
 import { AppError } from "../utils/AppError.js";
 import {
@@ -81,5 +81,23 @@ export const authController = {
     const input = createUserSchema.parse(req.body) as CreateUserInput;
     const user = await authService.register(input);
     res.status(201).json({ user });
+  },
+
+  /** Alteração da própria palavra-passe; mantém viva a sessão atual. */
+  async changePassword(req: Request, res: Response): Promise<void> {
+    if (!req.auth) {
+      throw AppError.unauthorized();
+    }
+
+    const input = changePasswordSchema.parse(req.body);
+    const rawToken = req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined;
+
+    const user = await authService.changePassword(
+      req.auth.userId,
+      input,
+      rawToken,
+    );
+
+    res.status(200).json({ user });
   },
 };

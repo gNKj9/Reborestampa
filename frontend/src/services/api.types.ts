@@ -13,7 +13,31 @@ export type PublicUser = {
   role: Role;
   isActive: boolean;
   lastLoginAt: string | null;
+  passwordChangedAt: string | null;
   createdAt: string;
+};
+
+export const CONTACT_STATUSES = ["NEW", "READ", "REPLIED", "ARCHIVED"] as const;
+export type ContactStatus = (typeof CONTACT_STATUSES)[number];
+
+export type ContactRequest = {
+  id: string;
+  name: string;
+  email: string;
+  company: string | null;
+  phone: string | null;
+  message: string;
+  status: ContactStatus;
+  handledAt: string | null;
+  createdAt: string;
+};
+
+export type ContactListResponse = {
+  items: ContactRequest[];
+  total: number;
+  page: number;
+  limit: number;
+  counts: Record<ContactStatus, number>;
 };
 
 export type SessionPayload = {

@@ -152,6 +152,47 @@ export const authService = {
     return toPublicUser(user);
   },
 
+  /**
+   * Alteração da própria palavra-passe.
+   * Revoga as outras sessões (todas menos a que fez o pedido): se a palavra-passe
+   * estava comprometida, quem a tinha perde o acesso.
+   */
+  async changePassword(
+    userId: string,
+    input: { currentPassword: string; newPassword: string },
+    currentRefreshToken?: string,
+  ): Promise<PublicUser> {
+    const user = await userRepository.findByIdWithHash(userId);
+
+    if (!user || !user.isActive) {
+      throw AppError.unauthorized("Sessão inválida");
+    }
+
+    const matches = await verifyPassword(user.passwordHash, input.currentPassword);
+    if (!matches) {
+      logger.warn({ userId }, "Alteração de palavra-passe com password atual errada");
+      throw AppError.badRequest("A palavra-passe atual não está correta");
+    }
+
+    if (input.currentPassword === input.newPassword) {
+      throw AppError.badRequest(
+        "A nova palavra-passe tem de ser diferente da atual",
+      );
+    }
+
+    const passwordHash = await hashPassword(input.newPassword);
+    const updated = await userRepository.updatePassword(user.id, passwordHash);
+
+    await refreshTokenRepository.revokeAllForUser(
+      user.id,
+      currentRefreshToken ? sha256Hex(currentRefreshToken) : undefined,
+    );
+
+    logger.info({ userId }, "Palavra-passe alterada; outras sessões revogadas");
+
+    return toPublicUser(updated);
+  },
+
   async register(input: {
     name: string;
     email: string;
