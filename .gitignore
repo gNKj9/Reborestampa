@@ -1,0 +1,31 @@
+# sistema / editores
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# dependências
+node_modules/
+.pnp.*
+
+# builds
+dist/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# credenciais locais — nunca versionar
+.env
+.env.*
+!.env.example
+
+# logs e cobertura
+*.log
+npm-debug.log*
+coverage/
+.test-dist/
+
+# prisma client gerado
+backend/src/generated/

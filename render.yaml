@@ -1,0 +1,38 @@
+# Blueprint da Render (https://render.com/docs/blueprint-spec).
+# Cria um único Web Service Docker que serve o site e a API na mesma origem.
+#
+# Depois de criar o Blueprint, preencher no dashboard os dois segredos:
+#   DATABASE_URL        -> connection string do Neon (sslmode=require)
+#   SEED_ADMIN_PASSWORD -> palavra-passe do administrador
+
+services:
+  - type: web
+    name: reborestampa
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerContext: .
+    dockerfilePath: ./deploy/Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVE_STATIC
+        value: "true"
+      - key: STATIC_DIR
+        value: /app/web
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: TRUST_PROXY
+        value: "1"
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: SEED_ADMIN_EMAIL
+        value: admin@reborestampa.pt
+      - key: SEED_ADMIN_PASSWORD
+        sync: false

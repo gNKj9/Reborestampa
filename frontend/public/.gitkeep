@@ -1,0 +1,1 @@
+# mantém a pasta public/ no repositório (o Dockerfile copia-a para a imagem)
