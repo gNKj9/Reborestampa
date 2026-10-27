@@ -7,6 +7,7 @@ const NAV = [
   { href: "/#tecnicas", label: "Técnicas" },
   { href: "/#processo", label: "Processo" },
   { href: "/#producao", label: "Produção" },
+  { href: "/#trabalhos", label: "Trabalhos" },
   { href: "/#empresa", label: "Empresa" },
   { href: "/#contactos", label: "Contactos" },
 ];

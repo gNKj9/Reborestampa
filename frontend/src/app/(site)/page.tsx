@@ -5,6 +5,7 @@ import { Hero } from "@/features/marketing/components/Hero";
 import { Process } from "@/features/marketing/components/Process";
 import { Production } from "@/features/marketing/components/Production";
 import { Techniques } from "@/features/marketing/components/Techniques";
+import { Work } from "@/features/marketing/components/Work";
 
 export default function HomePage() {
   return (
@@ -44,6 +45,7 @@ export default function HomePage() {
       <Techniques />
       <Process />
       <Production />
+      <Work />
       <About />
       <ContactCta />
     </>

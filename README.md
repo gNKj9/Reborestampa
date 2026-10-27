@@ -30,6 +30,9 @@ não está implementado — é o próximo passo.
 - `frontend/src/app/icon.png` — favicon, marca sobre fundo papel
 - `frontend/public/photos/producao.jpg` / `.webp` — fotografia de produção (4:5)
 - `frontend/public/photos/og.jpg` — imagem de partilha (1200×630, Open Graph)
+- `frontend/public/photos/trabalho-1.webp` / `trabalho-3.webp` — exemplar de
+  produção (estampa ilustrada a várias cores), recortado a 4:5 a partir das
+  fotografias originais. A secção `Trabalhos` mostra pormenores, não a peça inteira.
 
 No cabeçalho a marca aparece como símbolo + nome composto com a tipografia do site
 (legível a qualquer tamanho); o rodapé mostra o lockup completo. A cor de acento do
