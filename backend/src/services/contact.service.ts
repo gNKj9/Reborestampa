@@ -6,6 +6,8 @@ import {
 } from "../models/contact.schema.js";
 import { contactRepository } from "../repositories/contact.repository.js";
 import { AppError } from "../utils/AppError.js";
+import { auditService, type AuditActor } from "./audit.service.js";
+import { emailService } from "./email.service.js";
 
 /**
  * Pedidos de contacto.
@@ -32,7 +34,7 @@ export const contactService = {
       return;
     }
 
-    await contactRepository.create({
+    const created = await contactRepository.create({
       name: input.name,
       email: input.email,
       company: input.company?.trim() || null,
@@ -42,6 +44,12 @@ export const contactService = {
 
     // Nunca registamos a mensagem nos logs — só o facto de ter chegado.
     logger.info({ ip: context.ipAddress }, "Novo pedido de contacto");
+
+    // Aviso por email em segundo plano: se falhar, o pedido já está guardado
+    // e a caixa de entrada continua a ser a fonte de verdade.
+    void emailService.sendContactNotification(created).catch((error: unknown) => {
+      logger.warn({ err: error }, "Não foi possível enviar a notificação de contacto");
+    });
   },
 
   async list(params: {
@@ -87,7 +95,8 @@ export const contactService = {
   async updateStatus(
     id: string,
     status: ContactStatus,
-    userId: string,
+    actor: AuditActor,
+    ip?: string,
   ): Promise<PublicContactRequest> {
     const existing = await contactRepository.findById(id);
     if (!existing) {
@@ -96,9 +105,24 @@ export const contactService = {
 
     const updated = await contactRepository.updateStatus(id, {
       status,
-      handledById: userId,
+      handledById: actor.id ?? null,
       handledAt: status === "NEW" ? null : new Date(),
     });
+
+    if (existing.status !== status) {
+      await auditService.record({
+        actor,
+        action: "contact.status_changed",
+        entity: "contact",
+        entityId: id,
+        metadata: {
+          from: existing.status,
+          to: status,
+          subject: `${existing.name} <${existing.email}>`,
+        },
+        ip,
+      });
+    }
 
     return toPublicContact(updated);
   },

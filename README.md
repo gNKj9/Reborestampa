@@ -252,6 +252,7 @@ menos 32 caracteres.
 | POST | `/api/contact` | público (rate limit + honeypot) | formulário de contacto do site |
 | GET | `/api/contact-requests` | ADMIN, EDITOR | caixa de entrada com contagens por estado |
 | PATCH | `/api/contact-requests/:id` | ADMIN, EDITOR | muda o estado (`NEW`, `READ`, `REPLIED`, `ARCHIVED`) |
+| GET | `/api/audit` | ADMIN | histórico de ações administrativas (paginado) |
 
 Erros seguem sempre o mesmo formato:
 
@@ -298,6 +299,17 @@ foi revogado.
   remover o último administrador ativo.
 - RBAC por middleware, declarado rota a rota (`ADMIN`, `EDITOR`, `VIEWER`).
 
+**Privacidade e auditoria**
+- `/[privacidade]` descreve responsável, dados recolhidos, finalidade, prazo de
+  conservação (24 meses), subcontratantes, direitos e o único cookie usado
+  (`rb_refresh`, essencial).
+- `AuditLog` registra alterações de contas, papéis, reposições de palavra-passe e
+  estados de pedidos. A escrita é *best-effort*: se falhar, a ação prossegue e o
+  erro vai para o log — nunca se bloqueia uma operação legítima por causa do
+  histórico. Sem FK para `users`, para sobreviver à eliminação de contas.
+- Aviso de novo pedido por email (Resend) é opcional: sem `RESEND_API_KEY` o site
+  funciona igual e os pedidos ficam na caixa de entrada.
+
 **Operação**
 - Variáveis de ambiente validadas no boot; zero credenciais no código.
 - `helmet`, CSP restritiva na API, HSTS, `no-store` nas respostas de auth.
@@ -320,6 +332,11 @@ foi revogado.
 - **Sem verificação de email, recuperação por email ou MFA** — a palavra-passe
   muda-se com a atual; se for esquecida, um administrador repõe. Recuperação
   autónoma exigiria um serviço de email.
+- **Aviso por email**: enquanto não houver domínio verificado no Resend, o
+  remetente `onboarding@resend.dev` só entrega ao email dono da conta Resend.
+  Com domínio verificado, trocar `CONTACT_NOTIFY_FROM` para o endereço da empresa.
+- **Política de privacidade**: o texto é uma base técnica; deve ser revisto pela
+  empresa (prazo de conservação e dados do responsável) antes de divulgar o site.
 - **Textos do site**: os factos vêm do perfil oficial da empresa (fundação em 1992,
   sede, 12 cores, técnicas). As descrições de processo são proposta editorial a
   validar; não foram inventados contactos (telefone/email) porque não há fonte

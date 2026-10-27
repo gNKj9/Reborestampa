@@ -63,7 +63,7 @@ export const contactRepository = {
 
   updateStatus(
     id: string,
-    data: { status: ContactStatus; handledById: string; handledAt: Date | null },
+    data: { status: ContactStatus; handledById: string | null; handledAt: Date | null },
   ) {
     return prisma.contactRequest.update({
       where: { id },

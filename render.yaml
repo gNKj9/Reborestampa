@@ -2,7 +2,7 @@
 # Cria um único Web Service Docker que serve o site e a API na mesma origem.
 #
 # Depois de criar o Blueprint, preencher no dashboard os dois segredos:
-#   DATABASE_URL        -> connection string do Neon (sslmode=require)
+#   DATABASE_URL        -> connection string do Neon, com sslmode=verify-full
 #   SEED_ADMIN_PASSWORD -> palavra-passe do administrador
 
 services:
@@ -26,6 +26,10 @@ services:
         value: "true"
       - key: TRUST_PROXY
         value: "1"
+      # O site e a API partilham a origem; esta lista serve para clientes
+      # externos legítimos e para o log refletir a origem real.
+      - key: CORS_ORIGIN
+        value: https://reborestampa.onrender.com
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
@@ -36,3 +40,13 @@ services:
         value: admin@reborestampa.pt
       - key: SEED_ADMIN_PASSWORD
         sync: false
+      # Notificação de novos pedidos (opcional). Sem chave, o site funciona
+      # igual e os pedidos ficam na caixa de entrada.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: CONTACT_NOTIFY_TO
+        value: reborestampa@gmail.com
+      - key: CONTACT_NOTIFY_FROM
+        value: Reborestampa <onboarding@resend.dev>
+      - key: PUBLIC_SITE_URL
+        value: https://reborestampa.onrender.com

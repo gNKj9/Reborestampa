@@ -15,6 +15,7 @@ const TABS = [
   { href: "/painel", label: "Visão geral" },
   { href: "/painel/contactos", label: "Contactos" },
   { href: "/painel/utilizadores", label: "Utilizadores", adminOnly: true },
+  { href: "/painel/atividade", label: "Atividade", adminOnly: true },
   { href: "/painel/conta", label: "Conta" },
 ] as const;
 

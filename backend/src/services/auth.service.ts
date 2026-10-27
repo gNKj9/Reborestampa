@@ -7,6 +7,7 @@ import { AppError } from "../utils/AppError.js";
 import { newId, sha256Hex } from "../utils/crypto.js";
 import { getDummyHash, hashPassword, verifyPassword } from "../utils/password.js";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/tokens.js";
+import { auditService } from "./audit.service.js";
 
 type AuthUserRecord = NonNullable<
   Awaited<ReturnType<typeof userRepository.findByEmailWithHash>>
@@ -161,6 +162,7 @@ export const authService = {
     userId: string,
     input: { currentPassword: string; newPassword: string },
     currentRefreshToken?: string,
+    context?: { ip?: string },
   ): Promise<PublicUser> {
     const user = await userRepository.findByIdWithHash(userId);
 
@@ -187,6 +189,14 @@ export const authService = {
       user.id,
       currentRefreshToken ? sha256Hex(currentRefreshToken) : undefined,
     );
+
+    await auditService.record({
+      actor: { id: user.id, email: user.email },
+      action: "auth.password_changed",
+      entity: "user",
+      entityId: user.id,
+      ip: context?.ip ?? null,
+    });
 
     logger.info({ userId }, "Palavra-passe alterada; outras sessões revogadas");
 

@@ -4,6 +4,7 @@ import { refreshTokenRepository } from "../repositories/refresh-token.repository
 import { userRepository } from "../repositories/user.repository.js";
 import { AppError } from "../utils/AppError.js";
 import { hashPassword } from "../utils/password.js";
+import { auditService, type AuditActor } from "./audit.service.js";
 
 export const userService = {
   async list(params: {
@@ -40,14 +41,15 @@ export const userService = {
   async updateAccess(
     id: string,
     input: { role?: Role; isActive?: boolean },
-    actorId: string,
+    actor: AuditActor,
+    ip?: string,
   ): Promise<PublicUser> {
     const existing = await userRepository.findPublicById(id);
     if (!existing) {
       throw AppError.notFound("Utilizador não encontrado");
     }
 
-    if (id === actorId && input.role && input.role !== existing.role) {
+    if (id === actor.id && input.role && input.role !== existing.role) {
       throw AppError.badRequest("Não podes alterar o teu próprio papel");
     }
 
@@ -66,6 +68,29 @@ export const userService = {
     }
 
     const updated = await userRepository.updateAccess(id, input);
+
+    if (input.role && input.role !== existing.role) {
+      await auditService.record({
+        actor,
+        action: "user.role_changed",
+        entity: "user",
+        entityId: id,
+        metadata: { from: existing.role, to: input.role, email: existing.email },
+        ip,
+      });
+    }
+
+    if (input.isActive !== undefined && input.isActive !== existing.isActive) {
+      await auditService.record({
+        actor,
+        action: input.isActive ? "user.activated" : "user.deactivated",
+        entity: "user",
+        entityId: id,
+        metadata: { email: existing.email },
+        ip,
+      });
+    }
+
     return toPublicUser(updated);
   },
 
@@ -76,9 +101,10 @@ export const userService = {
   async resetPassword(
     id: string,
     newPassword: string,
-    actorId: string,
+    actor: AuditActor,
+    ip?: string,
   ): Promise<PublicUser> {
-    if (id === actorId) {
+    if (id === actor.id) {
       throw AppError.badRequest(
         "Para a tua conta, altera a palavra-passe na página de conta",
       );
@@ -94,6 +120,15 @@ export const userService = {
 
     // Reposição administrativa invalida todas as sessões dessa conta.
     await refreshTokenRepository.revokeAllForUser(id);
+
+    await auditService.record({
+      actor,
+      action: "user.password_reset",
+      entity: "user",
+      entityId: id,
+      metadata: { email: existing.email },
+      ip,
+    });
 
     return toPublicUser(updated);
   },

@@ -34,7 +34,8 @@ export const contactController = {
     const request = await contactService.updateStatus(
       req.params.id,
       input.status,
-      req.auth.userId,
+      { id: req.auth.userId, email: req.auth.email },
+      req.ip,
     );
     res.status(200).json({ request });
   },

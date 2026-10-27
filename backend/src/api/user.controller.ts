@@ -7,6 +7,7 @@ import {
 } from "../models/user.schema.js";
 import { userService } from "../services/user.service.js";
 import { authService } from "../services/auth.service.js";
+import { auditService } from "../services/audit.service.js";
 import { AppError } from "../utils/AppError.js";
 
 export const listUsersQuerySchema = z.object({
@@ -45,7 +46,8 @@ export const userController = {
     const user = await userService.updateAccess(
       req.params.id,
       input,
-      req.auth.userId,
+      { id: req.auth.userId, email: req.auth.email },
+      req.ip,
     );
     res.status(200).json({ user });
   },
@@ -62,7 +64,8 @@ export const userController = {
     const user = await userService.resetPassword(
       req.params.id,
       input.newPassword,
-      req.auth.userId,
+      { id: req.auth.userId, email: req.auth.email },
+      req.ip,
     );
     res.status(200).json({ user });
   },
@@ -70,6 +73,18 @@ export const userController = {
   async create(req: Request, res: Response): Promise<void> {
     const input = createUserSchema.parse(req.body);
     const user = await authService.register(input);
+
+    await auditService.record({
+      actor: req.auth
+        ? { id: req.auth.userId, email: req.auth.email }
+        : null,
+      action: "user.created",
+      entity: "user",
+      entityId: user.id,
+      metadata: { email: user.email, role: user.role },
+      ip: req.ip,
+    });
+
     res.status(201).json({ user });
   },
 };

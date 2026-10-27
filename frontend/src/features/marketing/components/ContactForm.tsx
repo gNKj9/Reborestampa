@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/Button";
 import { Field } from "@/components/Field";
@@ -188,8 +189,15 @@ export function ContactForm() {
         <Button type="submit" variant="accent" disabled={pending}>
           {pending ? "A enviar…" : "Enviar pedido"}
         </Button>
-        <p className="max-w-[30ch] text-[0.72rem] leading-relaxed text-ink-muted">
-          Usamos os dados apenas para responder a este pedido.
+        <p className="max-w-[34ch] text-[0.72rem] leading-relaxed text-ink-muted">
+          Usamos os dados apenas para responder a este pedido.{" "}
+          <Link
+            href="/privacidade"
+            className="underline decoration-line underline-offset-2 hover:text-accent"
+          >
+            Política de privacidade
+          </Link>
+          .
         </p>
       </div>
     </form>

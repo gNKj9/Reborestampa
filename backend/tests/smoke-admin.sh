@@ -175,6 +175,26 @@ expect 200 "$(code -H 'content-type: application/json' \
   -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"Admin-Nova-Forte-2026\"}" "$API/api/auth/login")" \
   "palavra-passe nova do administrador entra"
 
+echo "== Histórico de auditoria =="
+expect 401 "$(code "$API/api/audit")" "sem sessão → 401"
+expect 403 "$(code -H "authorization: Bearer $TOKEN_B" "$API/api/audit")" \
+  "EDITOR não vê auditoria"
+expect 200 "$(code -H "authorization: Bearer $TOKEN_A" "$API/api/audit")" \
+  "ADMIN lê auditoria"
+
+ACTIONS="$(python3 - "$OUT" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+print(" ".join(sorted({item["action"] for item in data["items"]})))
+PY
+)"
+for action in user.created user.role_changed user.password_reset auth.password_changed contact.status_changed; do
+  case " $ACTIONS " in
+    *" $action "*) ok "registo presente: $action" ;;
+    *) fail=$((fail + 1)); printf '  FALHA registo ausente: %s (vistos: %s)\n' "$action" "$ACTIONS" ;;
+  esac
+done
+
 echo "== Limite do formulário público =="
 LIMIT_CODES=""
 for i in 1 2 3 4 5; do

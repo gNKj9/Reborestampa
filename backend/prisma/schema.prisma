@@ -90,3 +90,21 @@ model ContactRequest {
   @@index([createdAt])
   @@map("contact_requests")
 }
+
+/// Registo de ações administrativas. Sem FK para `users` de propósito: o
+/// histórico tem de sobreviver à eliminação da conta que o produziu.
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  actorEmail String?  @map("actor_email") @db.VarChar(255)
+  action     String   @db.VarChar(60)
+  entity     String   @db.VarChar(40)
+  entityId   String?  @map("entity_id") @db.VarChar(64)
+  metadata   Json?
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Container } from "@/components/Surface";
+import { contact, telHref } from "@/features/marketing/content";
 
 const LINKEDIN =
   "https://www.linkedin.com/company/reborestampa-estamparia-t%C3%AAxtil/";
@@ -28,12 +29,31 @@ export function SiteFooter() {
           <h2 className="text-[0.66rem] font-medium uppercase tracking-[0.22em] text-ink-muted">
             Morada
           </h2>
-          <address className="text-[0.85rem] not-italic leading-relaxed text-ink-soft">
-            Rua Silva Araújo 1185
-            <br />
-            4795-120 Vila das Aves
-            <br />
-            Santo Tirso, Portugal
+          <address className="space-y-2 text-[0.85rem] not-italic leading-relaxed text-ink-soft">
+            <p>
+              {contact.street}
+              <br />
+              {contact.postal}
+              <br />
+              {contact.municipality}
+            </p>
+            <p className="space-y-1">
+              {contact.phones.map((phone) => (
+                <a
+                  key={phone}
+                  href={telHref(phone)}
+                  className="block transition-colors hover:text-accent"
+                >
+                  {phone}
+                </a>
+              ))}
+              <a
+                href={`mailto:${contact.email}`}
+                className="block transition-colors hover:text-accent"
+              >
+                {contact.email}
+              </a>
+            </p>
           </address>
         </div>
 
@@ -77,8 +97,19 @@ export function SiteFooter() {
       </Container>
 
       <Container className="flex flex-col gap-2 border-t border-line/70 py-6 text-[0.72rem] text-ink-muted sm:flex-row sm:items-center sm:justify-between">
-        <p>© {new Date().getFullYear()} Reborestampa — Estamparia Têxtil</p>
-        <p>Vila das Aves · Santo Tirso · Portugal</p>
+        <p>
+          © {new Date().getFullYear()} Reborestampa — Estamparia Têxtil · NIF{" "}
+          {contact.nif}
+        </p>
+        <p className="flex flex-wrap items-center gap-3">
+          <span>Vila das Aves · Santo Tirso · Portugal</span>
+          <Link
+            href="/privacidade"
+            className="transition-colors hover:text-accent"
+          >
+            Privacidade
+          </Link>
+        </p>
       </Container>
     </footer>
   );

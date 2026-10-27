@@ -56,9 +56,18 @@ export const values = [
 ] as const;
 
 export const contact = {
-  street: "Rua Silva Araújo 1185",
+  legalName: "Reborestampa — Estamparia Têxtil",
+  nif: "502890000",
+  street: "Rua Silva Araújo, 1145",
   postal: "4795-120 Vila das Aves",
   municipality: "Santo Tirso, Portugal",
+  phones: ["+351 252 881 000", "+351 252 873 000"],
+  email: "reborestampa@gmail.com",
   linkedin:
     "https://www.linkedin.com/company/reborestampa-estamparia-t%C3%AAxtil/",
 } as const;
+
+/** `tel:` sem espaços, como os leitores de ecrã e o sistema esperam. */
+export function telHref(phone: string): string {
+  return `tel:${phone.replace(/[^+\d]/g, "")}`;
+}

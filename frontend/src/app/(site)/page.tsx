@@ -1,3 +1,4 @@
+import { contact } from "@/features/marketing/content";
 import { About } from "@/features/marketing/components/About";
 import { ContactCta } from "@/features/marketing/components/ContactCta";
 import { Hero } from "@/features/marketing/components/Hero";
@@ -24,12 +25,15 @@ export default function HomePage() {
             foundingDate: "1992",
             address: {
               "@type": "PostalAddress",
-              streetAddress: "Rua Silva Araújo 1185",
+              streetAddress: contact.street,
               postalCode: "4795-120",
               addressLocality: "Vila das Aves",
               addressRegion: "Porto",
               addressCountry: "PT",
             },
+            telephone: contact.phones[0].replace(/\s+/g, ""),
+            email: contact.email,
+            taxID: contact.nif,
             sameAs: [
               "https://www.linkedin.com/company/reborestampa-estamparia-t%C3%AAxtil/",
             ],

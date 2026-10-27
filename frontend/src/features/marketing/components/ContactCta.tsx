@@ -1,6 +1,6 @@
 import { ButtonLink } from "@/components/Button";
 import { Container } from "@/components/Surface";
-import { contact } from "../content";
+import { contact, telHref } from "../content";
 import { ContactForm } from "./ContactForm";
 
 export function ContactCta() {
@@ -53,6 +53,23 @@ export function ContactCta() {
                 {contact.postal}
                 <br />
                 {contact.municipality}
+              </p>
+              <p className="mt-3 space-y-1 text-[0.92rem] text-paper/90">
+                {contact.phones.map((phone) => (
+                  <a
+                    key={phone}
+                    href={telHref(phone)}
+                    className="block transition-colors hover:text-paper"
+                  >
+                    {phone}
+                  </a>
+                ))}
+                <a
+                  href={`mailto:${contact.email}`}
+                  className="block underline decoration-paper/30 underline-offset-4 transition-colors hover:text-paper"
+                >
+                  {contact.email}
+                </a>
               </p>
             </div>
 

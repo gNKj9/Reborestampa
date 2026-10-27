@@ -21,3 +21,19 @@ export function initials(name: string): string {
     .map((part) => part.charAt(0).toUpperCase())
     .join("");
 }
+
+/** Data e hora com segundos — usado em registos de auditoria. */
+export function formatDateTime(value: string | null | undefined): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("pt-PT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
+}

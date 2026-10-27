@@ -96,6 +96,7 @@ export const authController = {
       req.auth.userId,
       input,
       rawToken,
+      { ip: req.ip },
     );
 
     res.status(200).json({ user });

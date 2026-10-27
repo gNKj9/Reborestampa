@@ -71,6 +71,15 @@ const rawEnvSchema = z.object({
     .default(900_000),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
 
+  /** Notificação de novos pedidos por email (opcional). */
+  RESEND_API_KEY: z.string().min(10).optional(),
+  CONTACT_NOTIFY_TO: z.string().email().default("reborestampa@gmail.com"),
+  CONTACT_NOTIFY_FROM: z
+    .string()
+    .min(3)
+    .default("Reborestampa <onboarding@resend.dev>"),
+  PUBLIC_SITE_URL: z.string().url().default("https://reborestampa.onrender.com"),
+
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
     .default("info"),
