@@ -33,7 +33,7 @@ export function Work() {
           <p className="max-w-[46ch] text-[0.92rem] leading-relaxed text-ink-soft">
             Estampa ilustrada a várias cores sobre malha clara: contorno
             definido, áreas de cor sólida e leitura limpa à distância. As
-            imagens são de pormenor — o motivo cobre a frente da peça.
+            imagens são de pormenor o motivo cobre a frente da peça.
           </p>
         </div>
 
