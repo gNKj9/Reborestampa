@@ -1,14 +1,27 @@
-# Reborestampa — plataforma web
+# Reborestampa — site e plataforma
 
-Base (scaffolding) de uma aplicação web para a **Reborestampa — Estamparia Têxtil**
-(Vila das Aves, Santo Tirso), construída segundo a especificação de arquitetura
+Site institucional e área reservada da **Reborestampa — Estamparia Têxtil**
+(Vila das Aves, Santo Tirso), construído segundo a especificação de arquitetura
 entregue: monorepo, Next.js no frontend, API em camadas no backend, PostgreSQL e
 Docker.
 
-O que já funciona, verificado de ponta a ponta: login, sessão com refresh token
-rotativo, RBAC, criação de contas por administrador, health checks e ligação real
-ao PostgreSQL. O domínio de negócio (clientes, encomendas, fichas técnicas) ainda
-não está implementado — é o próximo passo.
+Está em produção em <https://reborestampa.onrender.com>.
+
+## O que a aplicação faz
+
+**Site público**
+- Página institucional: técnicas, processo, produção, exemplar de trabalho, empresa e contactos.
+- Formulário de contacto real (nome, email, empresa, telefone, mensagem) com honeypot e limite por IP.
+- Página de política de privacidade e dados de contacto da empresa.
+- Marca aplicada (logotipo, favicon, imagem de partilha) e dados estruturados para pesquisa.
+
+**Área reservada** (`/painel`, sessão com refresh token rotativo)
+- **Contactos**: caixa de entrada com pesquisa, filtros por estado, paginação, exportação CSV, nota interna e ação de resposta por email.
+- **Utilizadores**: criação de contas, papéis (`ADMIN`/`EDITOR`/`VIEWER`), ativação, reposição de palavra-passe com gerador.
+- **Conta**: alteração da própria palavra-passe (exige a atual e termina as outras sessões).
+- **Atividade**: registo de auditoria de tudo o que é administrativo.
+
+**Por fazer**: o domínio de negócio (clientes, encomendas, referências, provas de cor).
 
 ---
 
@@ -19,7 +32,8 @@ não está implementado — é o próximo passo.
 | Frontend    | Next.js 16 (App Router), React 19, TypeScript estrito, Tailwind CSS 4    |
 | Backend     | Node.js 22, Express 5, TypeScript estrito, Zod, Pino                     |
 | Dados       | PostgreSQL 17, Prisma 7 (driver adapter `pg`, prepared statements)      |
-| Infra       | Docker + Docker Compose (db, migrações, API, frontend)                  |
+| Email       | Resend (opcional; sem chave, o site funciona igual)                     |
+| Infra       | Docker + Docker Compose · Render + Neon · GitHub Actions                |
 
 ---
 
@@ -45,25 +59,28 @@ site (magenta `#c2185b`) foi alinhada com o logotipo.
 ```text
 Reborestampa/
 ├── frontend/
-│   ├── public/                    # estáticos
+│   ├── public/                    # estáticos (marca, fotografias)
 │   ├── src/
 │   │   ├── assets/                # globals.css (tema Tailwind)
 │   │   ├── components/            # UI reutilizável (Button, Field, Logo, ...)
 │   │   ├── features/              # auth, dashboard, marketing (por domínio)
 │   │   ├── app/                   # rotas Next (route groups: site, auth, app)
 │   │   ├── services/              # cliente HTTP + serviços de API
-│   │   └── utils/                 # cn, formatação
+│   │   └── utils/                 # cn, formatação, gerador de palavras-passe
 │   └── Dockerfile
 ├── backend/
 │   ├── src/ …                     # api, services, repositories, models, middlewares
 │   ├── prisma/                    # schema, migrações, seed
-│   ├── tests/smoke.sh
+│   ├── tests/
+│   │   ├── smoke.sh               # auth, RBAC, rotação, CORS, limites
+│   │   └── smoke-admin.sh         # contactos, contas, auditoria, CSV
 │   └── Dockerfile
 ├── deploy/
 │   ├── Dockerfile                 # imagem única (site + API) para PaaS
 │   └── start.sh                   # migrações + seed + arranque
 ├── scripts/
 │   └── setup-env.py               # gera segredos e password do admin
+├── .github/workflows/ci.yml       # CI: tipos, builds e smoke tests
 ├── docker-compose.yml
 ├── render.yaml                    # blueprint do deploy gratuito
 ├── .env.example
@@ -136,6 +153,7 @@ estiver noutro endereço.
 | Onde     | Comando                | Efeito                                        |
 | -------- | ---------------------- | --------------------------------------------- |
 | backend  | `npm run dev`          | API com reload (tsx)                          |
+| backend  | `npm run typecheck`    | `tsc --noEmit`                                |
 | backend  | `npm run build`        | `prisma generate` + `tsc` para `dist/`        |
 | backend  | `npm start`            | API compilada                                 |
 | backend  | `npm run db:migrate`   | nova migração em desenvolvimento              |
@@ -144,7 +162,8 @@ estiver noutro endereço.
 | backend  | `npm run db:studio`    | Prisma Studio                                 |
 | backend  | `bash tests/smoke.sh`  | smoke test end-to-end (precisa da API a correr) |
 | backend  | `bash tests/smoke-admin.sh` | contactos, papéis e palavras-passe (precisa de `ADMIN_PASSWORD`) |
-| frontend | `npm run dev` / `build`| desenvolvimento / build de produção           |
+| frontend | `npm run dev` / `build` / `start` | desenvolvimento / build / servidor |
+| frontend | `npm run typecheck`    | `tsc --noEmit`                                |
 
 Os testes de administração alteram dados: use uma base de desenvolvimento. O
 `smoke-admin.sh` promove contas a EDITOR, repõe palavras-passe e muda a do
@@ -174,7 +193,7 @@ no CI são efémeros e não correspondem a nenhum ambiente real.
 
 ---
 
-## Deploy gratuito na Render (+ Neon)
+## Deploy na Render (+ Neon)
 
 Neste modo, **um único serviço** serve o site e a API na mesma origem: o Next é
 compilado como HTML estático (`output: "export"`) e o Express serve o `out/` em
@@ -182,30 +201,27 @@ compilado como HTML estático (`output: "export"`) e o Express serve o `out/` em
 
 1. **Base de dados (Neon, grátis e sem prazo)**
    Criar um projeto em <https://neon.com>, região Frankfurt, e copiar a
-   connection string **direta** (sem `-pooler`), com `?sslmode=require`.
+   connection string **direta** (sem `-pooler`). Recomendado `?sslmode=verify-full`
+   (o `require` funciona, mas o `pg` avisa que vai mudar de semântica).
 
-2. **Repositório**
-   ```bash
-   git init
-   git add .
-   git commit -m "Reborestampa: base da plataforma"
-   git remote add origin git@github.com:<utilizador>/reborestampa.git
-   git push -u origin main
-   ```
-   O `.env` fica de fora (está no `.gitignore`).
+2. **Repositório** — o `.env` fica de fora (está no `.gitignore`).
 
-3. **Render**
-   New → **Blueprint** → escolher o repositório. O `render.yaml` cria o serviço
-   Docker com o health check já configurado. Preencher no dashboard:
-   - `DATABASE_URL` (a do Neon)
-   - `SEED_ADMIN_PASSWORD` (12+ caracteres, maiúscula, minúscula e algarismo)
+3. **Render** — New → **Blueprint** → escolher o repositório. O `render.yaml` cria
+   o serviço Docker com health check em `/api/health`. Preencher no dashboard:
 
-   Alternativa sem blueprint: New → Web Service → Docker →
-   `deploy/Dockerfile`, contexto na raiz, e as variáveis do `render.yaml`.
+   | Variável | Valor |
+   | --- | --- |
+   | `DATABASE_URL` | a do Neon |
+   | `SEED_ADMIN_PASSWORD` | 12+ caracteres, maiúscula, minúscula e algarismo |
+   | `RESEND_API_KEY` | opcional; sem ela não há aviso por email |
+   | `CONTACT_NOTIFY_TO` | destinatário dos avisos (ver nota do Resend abaixo) |
 
-4. **Arranque**
-   O `deploy/start.sh` aplica `prisma migrate deploy`, corre o seed idempotente
-   e só depois inicia a API. O site fica em `https://<nome>.onrender.com`.
+   `TRUST_PROXY=2` é obrigatório na Render: a cadeia tem dois saltos (edge + router
+   interno). Com o valor `1`, o `req.ip` fica em `10.x` e **todos os visitantes
+   partilham o mesmo balde** de rate limiting.
+
+4. **Arranque** — o `deploy/start.sh` aplica `prisma migrate deploy`, corre o seed
+   idempotente e só depois inicia a API. O site fica em `https://<nome>.onrender.com`.
 
 Limitações do plano gratuito, para decidir com informação:
 
@@ -213,9 +229,26 @@ Limitações do plano gratuito, para decidir com informação:
   cerca de um minuto.
 - A Render diz na documentação que instâncias free **não são para produção** —
   servem para demonstração e validação.
-- O Postgres gratuito da Render expira em 30 dias; por isso a base de dados fica
-  no Neon, que não tem prazo.
+- O Postgres gratuito da Render expira ao fim de algumas semanas; por isso a
+  base de dados fica no Neon, que não tem prazo.
 - `COOKIE_SECURE=true` (já definido no `render.yaml`) porque a Render serve HTTPS.
+
+### Aviso de contactos por email (Resend)
+
+Sem `RESEND_API_KEY`, o site funciona e os pedidos ficam só na caixa de entrada.
+Cada pedido guarda o estado do aviso (`PENDING`, `SENT`, `FAILED`, `DISABLED`) e o
+painel mostra-o no cartão — não é preciso abrir logs para saber se o email saiu.
+
+Enquanto não houver **domínio verificado** no Resend:
+
+- o remetente tem de ser `onboarding@resend.dev`;
+- o Resend só entrega ao **email dono da conta Resend**, por isso
+  `CONTACT_NOTIFY_TO` tem de ser esse mesmo endereço.
+
+Depois de verificar o domínio: `CONTACT_NOTIFY_FROM` passa a
+`Reborestampa <notificacoes@dominio.pt>` e `CONTACT_NOTIFY_TO` para o email da
+empresa. `CONTACT_NOTIFY_TO` está marcado com `sync: false` no `render.yaml` para
+que um Sync do Blueprint não sobrescreva o valor do dashboard.
 
 ---
 
@@ -225,12 +258,17 @@ Limitações do plano gratuito, para decidir com informação:
 | --- | --- |
 | `migrate` falha com `spawn tsx ENOENT` | Imagem antiga (o stage de build era podado antes do seed). Rebuild: `docker compose build --no-cache backend migrate && docker compose up`. |
 | `Seed abortado: define SEED_ADMIN_EMAIL e SEED_ADMIN_PASSWORD` | Falta `SEED_ADMIN_PASSWORD` no `.env` (mínimo 12 caracteres, com maiúsculas, minúsculas e dígitos). Preencher e repetir `docker compose up`. |
-| `backend` unhealthy com `unable to determine transport target for "pino-pretty"` | Imagem de produção a correr com `NODE_ENV=development`. Corrigido: o compose força `NODE_ENV=production` no backend e o logger só usa pino-pretty se estiver instalado. Rebuild com `docker compose up --build`. |
-| `Palavra-passe fraca: ...` | O script exige 12+ caracteres, com maiúscula, minúscula e algarismo (ex.: `Reborestampa2026`). Volta a perguntar até 3 vezes; se desistir, corre outra vez. |
-| `As palavras-passe não coincidem` | O `setup-env.py` não escreveu nada. Corre outra vez com `--echo` para veres o que escreves. |
-| `port is already allocated` na 5432 | Já tens um PostgreSQL local. Muda o mapeamento em `docker-compose.yml` para `127.0.0.1:5433:5432` e ajusta `DATABASE_URL` se correres o backend fora do Docker. |
-| Login responde 401 com credenciais do `.env` | O seed não correu (ver linha acima) ou o email não corresponde a `SEED_ADMIN_EMAIL`. |
-| `openssl rand: Extra option` | `openssl` do macOS é LibreSSL e rejeita o argumento. Usa o comando com `tr`/`urandom` do arranque rápido. |
+| `backend` unhealthy com `unable to determine transport target for "pino-pretty"` | Imagem de produção a correr com `NODE_ENV=development`. O compose força `NODE_ENV=production` e o logger só usa pino-pretty se estiver instalado. |
+| `Palavra-passe fraca: ...` | O script exige 12+ caracteres, com maiúscula, minúscula e algarismo (ex.: `Reborestampa2026`). Volta a perguntar até 3 vezes. |
+| `As palavras-passe não coincidem` | O `setup-env.py` não escreveu nada. Corre outra vez com `--echo`. |
+| `port is already allocated` na 5432 | Já tens um PostgreSQL local. Muda o mapeamento para `127.0.0.1:5433:5432`. |
+| Login responde 401 com credenciais do `.env` | O seed não correu ou o email não corresponde a `SEED_ADMIN_EMAIL`. |
+| `Resend 401: API key is invalid` | Chave revogada ou mal copiada. Criar outra no Resend e atualizar `RESEND_API_KEY`. |
+| `Resend 403: can only send testing emails to your own email address` | `CONTACT_NOTIFY_TO` não coincide com o email da conta Resend (sem domínio verificado). |
+| Todos os visitantes recebem 429 ao fim de poucos pedidos | `TRUST_PROXY` a `1` na Render: o IP real fica escondido atrás do proxy. Pôr `2`. |
+| Nos logs, `ip` aparece como `10.x` ou `::ffff:…` | Mesma causa do anterior; o `::ffff:` é normalizado na auditoria. |
+| Log de arranque mostra `cors: ["http://localhost:3000"]` em produção | Cosmético: a mesma origem é sempre permitida. Definir `CORS_ORIGIN` na Render (ou sincronizar o Blueprint) para o log refletir a realidade. |
+| `openssl rand: Extra option` | `openssl` do macOS é LibreSSL e rejeita o argumento. Usa o `tr`/`urandom` do `setup-env.py`. |
 
 ---
 
@@ -238,11 +276,11 @@ Limitações do plano gratuito, para decidir com informação:
 
 Todas as variáveis são validadas no arranque (`backend/src/config/env.ts`): a API
 recusa arrancar com configuração inválida e exige segredos JWT distintos com pelo
-menos 32 caracteres.
+menos 32 caracteres. Variáveis declaradas mas vazias são tratadas como ausentes.
 
 | Variável | Obrigatória | Notas |
 | --- | --- | --- |
-| `DATABASE_URL` | sim | URI `postgresql://…` |
+| `DATABASE_URL` | sim | URI `postgresql://…`; `sslmode=verify-full` recomendado |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Docker | usadas pelo serviço `db` |
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | sim | ≥ 32 caracteres, diferentes entre si |
 | `ACCESS_TOKEN_TTL_SECONDS` | não | omissão 900 (15 min) |
@@ -250,8 +288,13 @@ menos 32 caracteres.
 | `CORS_ORIGINS` | não | lista separada por vírgulas; omissão `http://localhost:3000` |
 | `COOKIE_SECURE` | não | `true` em produção (HTTPS); `false` em local |
 | `COOKIE_DOMAIN` | não | vazio em localhost |
-| `RATE_LIMIT_MAX` / `AUTH_RATE_LIMIT_MAX` | não | 120/min e 10 falhas/15 min por IP+email |
-| `TRUST_PROXY` | não | nº de proxies à frente da API (omissão 1) |
+| `RATE_LIMIT_MAX` / `AUTH_RATE_LIMIT_MAX` | não | 120/min; login: 10 falhas/15 min por IP+email e 20 por IP |
+| `TRUST_PROXY` | não | nº de proxies à frente da API. **2 na Render**, 1 em local, 0 exposto direto |
+| `SERVE_STATIC` / `STATIC_DIR` | deploy | servidos pelo `deploy/Dockerfile` |
+| `RESEND_API_KEY` | não | sem ela, os avisos ficam `DISABLED` |
+| `CONTACT_NOTIFY_TO` | não | omissão `reborestampa@gmail.com`; igual ao email da conta Resend até haver domínio |
+| `CONTACT_NOTIFY_FROM` | não | omissão `Reborestampa <onboarding@resend.dev>` |
+| `PUBLIC_SITE_URL` | não | usado no link do email de aviso |
 | `SEED_ADMIN_*` | não | usadas apenas por `npm run db:seed` |
 | `NEXT_PUBLIC_API_URL` | não | URL da API vista pelo browser (inlinada no build) |
 
@@ -291,12 +334,17 @@ Erros seguem sempre o mesmo formato:
 anónima — não é erro) e **401** quando o cookie existe mas é inválido, expirou ou
 foi revogado.
 
+`POST /api/contact` responde **201** mesmo quando o honeypot descarta o pedido ou
+quando o aviso por email falha: o formulário nunca revela o que aconteceu ao bot, e
+o pedido guardado é a fonte de verdade.
+
 ---
 
 ## Segurança implementada
 
 **Fronteira**
-- CORS com allowlist explícita (sem wildcards) e `credentials: true`.
+- CORS com allowlist explícita (sem wildcards) e `credentials: true`; a mesma
+  origem é sempre aceite (site e API partilham host).
 - Rate limiting global por IP, reforçado no login (duas barreiras: IP + email e
   só IP, `skipSuccessfulRequests`), na renovação de sessão e no formulário
   público de contacto (5 pedidos por 10 minutos).
@@ -327,18 +375,17 @@ foi revogado.
 - RBAC por middleware, declarado rota a rota (`ADMIN`, `EDITOR`, `VIEWER`).
 
 **Privacidade e auditoria**
-- `/[privacidade]` descreve responsável, dados recolhidos, finalidade, prazo de
+- `/privacidade` descreve responsável, dados recolhidos, finalidade, prazo de
   conservação (24 meses), subcontratantes, direitos e o único cookie usado
   (`rb_refresh`, essencial).
-- `AuditLog` registra alterações de contas, papéis, reposições de palavra-passe e
-  estados de pedidos. A escrita é *best-effort*: se falhar, a ação prossegue e o
-  erro vai para o log — nunca se bloqueia uma operação legítima por causa do
-  histórico. Sem FK para `users`, para sobreviver à eliminação de contas.
-- Aviso de novo pedido por email (Resend) é opcional: sem `RESEND_API_KEY` o site
-  funciona igual e os pedidos ficam na caixa de entrada.
-- Cada pedido guarda o **estado do aviso** (`PENDING`, `SENT`, `FAILED`,
-  `DISABLED`) e, em caso de falha, a mensagem do fornecedor. O painel mostra-o no
-  cartão, para não ser preciso procurar nos logs para saber se o email saiu.
+- `AuditLog` registra alterações de contas, papéis, reposições de palavra-passe,
+  estados de pedidos e notas internas. A escrita é *best-effort*: se falhar, a ação
+  prossegue e o erro vai para o log — nunca se bloqueia uma operação legítima por
+  causa do histórico. Sem FK para `users`, para sobreviver à eliminação de contas.
+- O conteúdo das notas internas **não** é copiado para a auditoria; registra-se
+  apenas que houve alteração, por quem e quando.
+- Cada pedido guarda o estado do aviso por email e a mensagem do fornecedor em caso
+  de falha.
 
 **Operação**
 - Variáveis de ambiente validadas no boot; zero credenciais no código.
@@ -355,36 +402,33 @@ foi revogado.
   Duas tabs a renovar exatamente ao mesmo tempo podem provocar logout. Aceitável
   para o âmbito atual; se incomodar, introduzir uma janela de tolerância de poucos
   segundos em `auth.service.refresh`.
+- **Rate limiting em memória**: correto com uma instância (o caso atual). Se um dia
+  houver várias, passa a ser por instância e precisa de um store partilhado.
 - **Guard de UI** (`AuthGuard`) é conveniência de navegação. A autorização real é
   sempre feita na API; o frontend nunca é fonte de verdade.
 - **CSP do Next.js**: para já só há headers básicos (`next.config.ts`). Uma CSP
-  completa exige nonce por pedido — próximo passo antes de produção.
+  completa exige nonce por pedido, o que obriga a servir o Next com processo
+  próprio em vez de export estático.
 - **Sem verificação de email, recuperação por email ou MFA** — a palavra-passe
-  muda-se com a atual; se for esquecida, um administrador repõe. Recuperação
-  autónoma exigiria um serviço de email.
+  muda-se com a atual; se for esquecida, um administrador repõe.
 - **Aviso por email**: enquanto não houver domínio verificado no Resend, o
-  remetente `onboarding@resend.dev` só entrega ao email dono da conta Resend.
-  Com domínio verificado, trocar `CONTACT_NOTIFY_FROM` para o endereço da empresa.
-- **Política de privacidade**: o texto é uma base técnica; deve ser revisto pela
-  empresa (prazo de conservação e dados do responsável) antes de divulgar o site.
-- **Textos do site**: os factos vêm do perfil oficial da empresa (fundação em 1992,
-  sede, 12 cores, técnicas). As descrições de processo são proposta editorial a
-  validar; não foram inventados contactos (telefone/email) porque não há fonte
-  verificada.
-- **Docker**: os ficheiros foram escritos e o compose validado estruturalmente,
-  mas o ambiente onde este projeto foi gerado não tinha daemon Docker — o primeiro
-  `docker compose up --build` deve ser feito na tua máquina.
+  remetente `onboarding@resend.dev` só entrega ao email dono da conta.
+- **Política de privacidade**: o texto é uma base técnica, com os dados fornecidos
+  pela empresa. O prazo de conservação (24 meses) deve ser confirmado por quem
+  responde pelo tratamento de dados.
+- **Portefólio**: a secção `Trabalhos` mostra um trabalho antigo e concluído, sem
+  reserva de confidencialidade assumida pela empresa.
 
 ---
 
 ## Próximos passos sugeridos
 
-1. Modelar o domínio: `Cliente`, `Encomenda`, `Referência`, `Prova`, `Tecnica`.
-2. Fichas técnicas por técnica de estampagem (consumos, cores, tempos).
-3. Auditoria de ações administrativas e histórico de alterações.
-4. CI: `tsc`, build do frontend, `tests/smoke.sh` e `tests/smoke-admin.sh` contra
-   um Postgres de serviço.
-5. CSP com nonce, backups da base de dados e observabilidade (métricas + alertas).
-6. Política de privacidade e tratamento de dados (RGPD) antes de recolher
-   contactos em produção — o formulário já guarda nome, email, empresa, telefone
-   e mensagem.
+1. **Domínio próprio** — credibilidade e entregabilidade (o Resend passa a enviar
+   do domínio da empresa). Custo ~12 €/ano.
+2. **Uptime e backups** — monitor com alerta por email e procedimento de restauro
+   do Neon escrito e testado.
+3. **CSP com nonce** — exige deixar o export estático e servir o Next com processo
+   próprio (Render suporta, mas deixa de ser um serviço único).
+4. **Portefólio** — mais casos, filtro por técnica e fotografias da peça completa.
+5. **Domínio de negócio** — `Cliente`, `Encomenda`, `Referência`, `Prova`, `Tecnica`,
+   uma entidade por sessão e só quando houver uso real que a justifique.
