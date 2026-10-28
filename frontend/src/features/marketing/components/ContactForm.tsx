@@ -71,8 +71,8 @@ export function ContactForm() {
           Obrigado. Recebemos a tua mensagem.
         </p>
         <p className="mt-3 text-[0.88rem] leading-relaxed text-ink-soft">
-          Respondemos para o email indicado. Se o assunto for urgente, o LinkedIn
-          da empresa está ao lado.
+          Respondemos para o email indicado. Se o assunto for urgente, usa o
+          LinkedIn da empresa.
         </p>
         <Button
           variant="outline"

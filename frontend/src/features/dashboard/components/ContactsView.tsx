@@ -38,6 +38,52 @@ const STATUS_STYLES: Record<ContactStatus, string> = {
   ARCHIVED: "border-line bg-paper text-ink-muted",
 };
 
+function NotifyState({ request }: { request: ContactRequest }) {
+  if (request.notifyStatus === "SENT") {
+    return (
+      <p className="flex items-center gap-2 text-[0.7rem] text-emerald-800">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" aria-hidden="true" />
+        Aviso por email enviado
+        {request.notifiedAt ? ` · ${formatDate(request.notifiedAt)}` : ""}
+      </p>
+    );
+  }
+
+  if (request.notifyStatus === "DISABLED") {
+    return (
+      <p className="flex items-center gap-2 text-[0.7rem] text-ink-muted">
+        <span className="h-1.5 w-1.5 rounded-full bg-ink-muted" aria-hidden="true" />
+        Aviso por email desativado — falta configurar RESEND_API_KEY
+      </p>
+    );
+  }
+
+  if (request.notifyStatus === "FAILED") {
+    return (
+      <p className="flex items-start gap-2 text-[0.7rem] text-accent">
+        <span
+          className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-accent"
+          aria-hidden="true"
+        />
+        <span>
+          O aviso por email falhou
+          {request.notifyError ? `: ${request.notifyError}` : "."}
+        </span>
+      </p>
+    );
+  }
+
+  return (
+    <p className="flex items-center gap-2 text-[0.7rem] text-ink-muted">
+      <span
+        className="h-1.5 w-1.5 animate-pulse rounded-full bg-ink-muted"
+        aria-hidden="true"
+      />
+      Aviso por email a caminho…
+    </p>
+  );
+}
+
 function NoteEditor({
   request,
   onSaved,
@@ -406,6 +452,8 @@ export function ContactsView() {
                   </span>
                 )}
               </div>
+
+              <NotifyState request={request} />
 
               <NoteEditor request={request} onSaved={replaceRequest} />
             </Card>

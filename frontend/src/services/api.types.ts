@@ -18,6 +18,8 @@ export type PublicUser = {
 };
 
 export const CONTACT_STATUSES = ["NEW", "READ", "REPLIED", "ARCHIVED"] as const;
+export const NOTIFY_STATUSES = ["PENDING", "SENT", "FAILED", "DISABLED"] as const;
+export type NotifyStatus = (typeof NOTIFY_STATUSES)[number];
 export type ContactStatus = (typeof CONTACT_STATUSES)[number];
 
 export type ContactRequest = {
@@ -31,6 +33,9 @@ export type ContactRequest = {
   handledAt: string | null;
   internalNote: string | null;
   noteUpdatedAt: string | null;
+  notifyStatus: NotifyStatus;
+  notifyError: string | null;
+  notifiedAt: string | null;
   createdAt: string;
 };
 

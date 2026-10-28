@@ -58,11 +58,27 @@ export const contactService = {
     // Nunca registamos a mensagem nos logs — só o facto de ter chegado.
     logger.info({ ip: context.ipAddress }, "Novo pedido de contacto");
 
-    // Aviso por email em segundo plano: se falhar, o pedido já está guardado
-    // e a caixa de entrada continua a ser a fonte de verdade.
-    void emailService.sendContactNotification(created).catch((error: unknown) => {
-      logger.warn({ err: error }, "Não foi possível enviar a notificação de contacto");
-    });
+    // Aviso por email em segundo plano. O resultado fica registado no próprio
+    // pedido, para se saber no painel se o aviso saiu, falhou ou está desativado.
+    void (async () => {
+      try {
+        if (!emailService.enabled()) {
+          await contactRepository.setNotifyStatus(created.id, "DISABLED");
+          return;
+        }
+
+        await emailService.sendContactNotification(created);
+        await contactRepository.setNotifyStatus(created.id, "SENT");
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Erro desconhecido";
+        logger.warn(
+          { err: error },
+          "Não foi possível enviar a notificação de contacto",
+        );
+        await contactRepository.setNotifyStatus(created.id, "FAILED", message);
+      }
+    })();
   },
 
   async list(params: {

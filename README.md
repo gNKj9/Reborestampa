@@ -314,6 +314,9 @@ foi revogado.
   histórico. Sem FK para `users`, para sobreviver à eliminação de contas.
 - Aviso de novo pedido por email (Resend) é opcional: sem `RESEND_API_KEY` o site
   funciona igual e os pedidos ficam na caixa de entrada.
+- Cada pedido guarda o **estado do aviso** (`PENDING`, `SENT`, `FAILED`,
+  `DISABLED`) e, em caso de falha, a mensagem do fornecedor. O painel mostra-o no
+  cartão, para não ser preciso procurar nos logs para saber se o email saiu.
 
 **Operação**
 - Variáveis de ambiente validadas no boot; zero credenciais no código.

@@ -22,6 +22,14 @@ enum Role {
   VIEWER
 }
 
+/// Resultado da tentativa de avisar a empresa por email.
+enum NotifyStatus {
+  PENDING
+  SENT
+  FAILED
+  DISABLED
+}
+
 /// Estado de um pedido de contacto recebido pelo site.
 /// NEW -> acabou de chegar; READ -> visto; REPLIED -> respondido; ARCHIVED -> fechado.
 enum ContactStatus {
@@ -82,6 +90,9 @@ model ContactRequest {
   status      ContactStatus @default(NEW)
   handledAt   DateTime?     @map("handled_at")
   handledById String?       @map("handled_by_id") @db.Uuid
+  notifyStatus     NotifyStatus @default(PENDING) @map("notify_status")
+  notifyError      String?  @map("notify_error") @db.VarChar(300)
+  notifiedAt       DateTime? @map("notified_at")
   internalNote     String?  @map("internal_note") @db.VarChar(2000)
   noteUpdatedAt    DateTime? @map("note_updated_at")
   noteUpdatedById  String?  @map("note_updated_by_id") @db.Uuid

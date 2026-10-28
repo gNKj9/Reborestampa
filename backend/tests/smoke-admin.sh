@@ -85,6 +85,14 @@ expect 422 "$(code -H 'content-type: application/json' \
   -d '{"name":"A","email":"invalido","message":"curta"}' \
   "$API/api/contact")" "payload inválido rejeitado"
 
+# Sem RESEND_API_KEY no ambiente de teste, o aviso fica marcado como desativado.
+sleep 1
+expect 200 "$(code -H "authorization: Bearer $TOKEN_A" "$API/api/contact-requests")" \
+  "estado do aviso por email"
+NOTIFY="$(jget items.0.notifyStatus)"
+assert "$( [ "$NOTIFY" = "DISABLED" ] && echo 1 || echo 0 )" \
+  "aviso marcado como desativado (sem chave): $NOTIFY"
+
 echo "== Caixa de entrada (RBAC) =="
 expect 401 "$(code "$API/api/contact-requests")" "sem sessão → 401"
 
@@ -197,6 +205,7 @@ expect 200 "$(code -b "$JAR_A" -H "authorization: Bearer $TOKEN_A" -X PATCH -H '
 assert "$( [ "$(jget user.passwordChangedAt)" != "None" ] && echo 1 || echo 0 )" "passwordChangedAt preenchido"
 
 expect 200 "$(code -b "$JAR_A" -X POST "$API/api/auth/refresh")" "sessão que alterou continua válida"
+TOKEN_A="$(jget accessToken)"  # o token anterior foi invalidado pela mudança de palavra-passe
 
 expect 401 "$(code -H 'content-type: application/json' \
   -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\"}" "$API/api/auth/login")" \

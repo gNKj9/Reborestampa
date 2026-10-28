@@ -12,6 +12,9 @@ const contactSelect = {
   handledAt: true,
   internalNote: true,
   noteUpdatedAt: true,
+  notifyStatus: true,
+  notifyError: true,
+  notifiedAt: true,
   createdAt: true,
 } as const;
 
@@ -110,6 +113,22 @@ export const contactRepository = {
       select: contactSelect,
       orderBy: { createdAt: "desc" },
       take: params.take,
+    });
+  },
+
+  setNotifyStatus(
+    id: string,
+    status: "SENT" | "FAILED" | "DISABLED",
+    error?: string | null,
+  ) {
+    return prisma.contactRequest.update({
+      where: { id },
+      data: {
+        notifyStatus: status,
+        notifyError: error ? error.slice(0, 300) : null,
+        notifiedAt: status === "SENT" ? new Date() : null,
+      },
+      select: { id: true },
     });
   },
 

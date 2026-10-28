@@ -7,7 +7,7 @@ import { Input } from "@/components/Input";
 import { Badge, Card, Container, Eyebrow } from "@/components/Surface";
 import { useAuth } from "@/features/auth/auth-context";
 import { ROLE_LABELS } from "@/features/auth/roles";
-import { ApiError } from "@/services/api.client";
+import { ApiError, refreshSession } from "@/services/api.client";
 import { authService } from "@/services/auth.service";
 import { formatDate } from "@/utils/format";
 
@@ -48,6 +48,11 @@ export function AccountView() {
         currentPassword: current,
         newPassword: next,
       });
+
+      // A mudança invalida o access token atual: renova já, em vez de deixar
+      // o próximo pedido apanhar um 401.
+      await refreshSession();
+
       setCurrent("");
       setNext("");
       setConfirm("");

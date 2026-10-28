@@ -2,6 +2,8 @@ import { z } from "zod";
 import { emailSchema } from "./user.schema.js";
 
 export const CONTACT_STATUSES = ["NEW", "READ", "REPLIED", "ARCHIVED"] as const;
+export const NOTIFY_STATUSES = ["PENDING", "SENT", "FAILED", "DISABLED"] as const;
+export type NotifyStatus = (typeof NOTIFY_STATUSES)[number];
 export type ContactStatus = (typeof CONTACT_STATUSES)[number];
 
 export const contactStatusSchema = z.enum(CONTACT_STATUSES);
@@ -60,6 +62,9 @@ export type PublicContactRequest = {
   handledAt: string | null;
   internalNote: string | null;
   noteUpdatedAt: string | null;
+  notifyStatus: NotifyStatus;
+  notifyError: string | null;
+  notifiedAt: string | null;
   createdAt: string;
 };
 
@@ -74,6 +79,9 @@ type ContactRecord = {
   handledAt: Date | null;
   internalNote: string | null;
   noteUpdatedAt: Date | null;
+  notifyStatus: NotifyStatus;
+  notifyError: string | null;
+  notifiedAt: Date | null;
   createdAt: Date;
 };
 
@@ -89,6 +97,9 @@ export function toPublicContact(request: ContactRecord): PublicContactRequest {
     handledAt: request.handledAt?.toISOString() ?? null,
     internalNote: request.internalNote,
     noteUpdatedAt: request.noteUpdatedAt?.toISOString() ?? null,
+    notifyStatus: request.notifyStatus,
+    notifyError: request.notifyError,
+    notifiedAt: request.notifiedAt?.toISOString() ?? null,
     createdAt: request.createdAt.toISOString(),
   };
 }

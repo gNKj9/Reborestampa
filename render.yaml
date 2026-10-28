@@ -44,8 +44,11 @@ services:
       # igual e os pedidos ficam na caixa de entrada.
       - key: RESEND_API_KEY
         sync: false
+      # Definido no dashboard: muda entre teste (email da conta Resend) e
+      # produção (email da empresa). Com sync:false, um Sync do Blueprint não
+      # sobrescreve o valor.
       - key: CONTACT_NOTIFY_TO
-        value: reborestampa@gmail.com
+        sync: false
       - key: CONTACT_NOTIFY_FROM
         value: Reborestampa <onboarding@resend.dev>
       - key: PUBLIC_SITE_URL
