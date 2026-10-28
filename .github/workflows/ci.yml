@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Um run por branch: um push novo cancela o anterior, em vez de acumular fila.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: API + base de dados
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: reborestampa_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/reborestampa_test
+      NODE_ENV: test
+      # Segredos efémeros: só existem durante o job, não são credenciais reais.
+      JWT_ACCESS_SECRET: ci-access-3f9a2c7e5b1d8046a2c9f7e3b5d1a804
+      JWT_REFRESH_SECRET: ci-refresh-8b1e4d7a2c5f9036e1b8d4a7c2f5e903
+      SEED_ADMIN_EMAIL: admin@reborestampa.pt
+      SEED_ADMIN_PASSWORD: Admin-CI-Forte-2026
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+
+      - name: Verificar tipos
+        run: npm run typecheck
+
+      - name: Aplicar migrações
+        run: npm run db:deploy
+
+      - name: Criar administrador
+        run: npm run db:seed
+
+      - name: Compilar
+        run: npm run build
+
+      - name: Arrancar a API
+        run: |
+          PORT=4000 CORS_ORIGIN=http://localhost:3000 COOKIE_SECURE=false \
+            node dist/server.js > /tmp/api.log 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4000/api/health/ready > /dev/null; then
+              echo "API pronta"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "A API não arrancou a tempo"
+          cat /tmp/api.log
+          exit 1
+
+      - name: Smoke tests (auth, RBAC, rotação, CORS, limites)
+        env:
+          API_URL: http://127.0.0.1:4000/api
+          ADMIN_PASSWORD: Admin-CI-Forte-2026
+        run: bash tests/smoke.sh
+
+      # O smoke anterior queima de propósito o limite de tentativas de login.
+      # Como os contadores vivem em memória, reiniciar a API é o que dá ao
+      # segundo conjunto de testes um processo limpo.
+      - name: Reiniciar a API
+        run: |
+          pkill -f "node dist/server.js" || true
+          sleep 2
+          PORT=4000 CORS_ORIGIN=http://localhost:3000 COOKIE_SECURE=false \
+            node dist/server.js > /tmp/api.log 2>&1 &
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:4000/api/health/ready > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "A API não voltou a arrancar"
+          cat /tmp/api.log
+          exit 1
+
+      - name: Smoke tests (contactos, contas, auditoria, CSV)
+        env:
+          API_URL: http://127.0.0.1:4000/api
+          ADMIN_PASSWORD: Admin-CI-Forte-2026
+        run: bash tests/smoke-admin.sh
+
+      - name: Logs da API
+        if: failure()
+        run: cat /tmp/api.log || true
+
+  frontend:
+    name: Site (build e tipos)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_BUILD_CPUS: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+
+      - name: Verificar tipos
+        run: npm run typecheck
+
+      - name: Build (servidor standalone, usado no docker-compose)
+        run: npm run build
+
+      - name: Build (export estático, usado na Render)
+        run: npm run build
+        env:
+          NEXT_STATIC_EXPORT: "true"
+          NEXT_PUBLIC_API_URL: /api

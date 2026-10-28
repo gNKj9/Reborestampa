@@ -152,6 +152,28 @@ administrador no fim — em bases partilhadas, recrie o ambiente a seguir.
 
 ---
 
+## Integração contínua (GitHub Actions)
+
+`.github/workflows/ci.yml` corre a cada `push` para `main`, a cada pull request e
+manualmente (Actions → CI → Run workflow). Dois jobs independentes:
+
+**API + base de dados**
+1. `npm ci`, `typecheck`, `migrate deploy` e `seed` contra um **PostgreSQL 17** de serviço
+2. `build` e arranque da API compilada, à espera de `/api/health/ready`
+3. `tests/smoke.sh` — auth, RBAC, rotação de refresh, CORS, rate limiting
+4. **reinício da API** (os contadores de rate limit vivem em memória e o teste
+   anterior queima-os de propósito)
+5. `tests/smoke-admin.sh` — contactos, contas, palavra-passes, auditoria, CSV
+
+**Site**
+1. `npm ci` e `typecheck`
+2. build `standalone` (docker-compose) e build `export` (Render)
+
+Em caso de falha, os logs da API são impressos no fim do job. Os segredos usados
+no CI são efémeros e não correspondem a nenhum ambiente real.
+
+---
+
 ## Deploy gratuito na Render (+ Neon)
 
 Neste modo, **um único serviço** serve o site e a API na mesma origem: o Next é
