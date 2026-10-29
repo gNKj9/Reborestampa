@@ -70,6 +70,25 @@ export const loginIpRateLimiter = rateLimit({
 });
 
 /**
+ * Segunda barreira, só por IP: sem ela, variar o email a cada pedido escaparia
+ * ao limite por email e permitiria inundar muitas caixas a partir da mesma origem.
+ */
+export const forgotPasswordIpRateLimiter = rateLimit({
+  windowMs: env.AUTH_RATE_LIMIT_WINDOW_MS,
+  limit: 15,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => ipKeyGenerator(req.ip ?? "unknown"),
+  handler: (_req, res) => {
+    res.status(429).json(
+      jsonLimitResponse(
+        "Demasiados pedidos de recuperação a partir desta rede. Aguarda alguns minutos.",
+      ),
+    );
+  },
+});
+
+/**
  * Recuperação de palavra-passe: poucos pedidos por IP e por email. Sem isto,
  * o formulário serve para inundar a caixa de alguém com links.
  */

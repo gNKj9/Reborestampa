@@ -8,7 +8,7 @@
 set -uo pipefail
 
 BASE="${BASE_URL:-https://reborestampa.onrender.com}"
-TIMEOUT="${TIMEOUT:-30}"
+TIMEOUT="${TIMEOUT:-60}"  # a instância free pode demorar ~1 min a acordar
 
 pass=0
 fail=0
@@ -91,13 +91,16 @@ expect_header "/" "referrer-policy" "referrer-policy"
 expect_header "/api/health" "content-security-policy" "CSP na API"
 
 echo "== Recuperação de palavra-passe =="
+# Email único por execução: o limite é por IP+email e o monitor não deve
+# gastar a quota de um endereço real.
+PROBE_EMAIL="preflight+$(date +%s)@exemplo.pt"
 forgot_code="$(curl -s -o "$TMP_BODY" -w '%{http_code}' --max-time "$TIMEOUT" \
   -H 'content-type: application/json' \
-  -d '{"email":"preflight@exemplo.pt"}' "$BASE/api/auth/forgot-password" 2>/dev/null || true)"
-if [ "$forgot_code" = "202" ]; then
-  ok "pedido de recuperação responde 202"
+  -d "{\"email\":\"$PROBE_EMAIL\"}" "$BASE/api/auth/forgot-password" 2>/dev/null || true)"
+if [ "$forgot_code" = "202" ] || [ "$forgot_code" = "429" ]; then
+  ok "pedido de recuperação responde ($forgot_code)"
 else
-  bad "pedido de recuperação (esperado 202, obtido $forgot_code)"
+  bad "pedido de recuperação (esperado 202 ou 429, obtido $forgot_code)"
 fi
 if [ "$forgot_code" = "202" ]; then
   if grep -q 'devToken' "$TMP_BODY" 2>/dev/null; then

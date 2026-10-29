@@ -336,7 +336,7 @@ menos 32 caracteres. Variáveis declaradas mas vazias são tratadas como ausente
 | POST | `/api/auth/logout` | cookie de refresh | revoga e limpa o cookie |
 | GET | `/api/auth/me` | autenticado | perfil atual |
 | PATCH | `/api/auth/password` | autenticado | altera a própria palavra-passe (exige a atual) |
-| POST | `/api/auth/forgot-password` | público (3/15 min por IP+email) | pede o link de recuperação (resposta uniforme) |
+| POST | `/api/auth/forgot-password` | público (3/15 min por IP+email e 15 por IP) | pede o link de recuperação (resposta uniforme) |
 | POST | `/api/auth/reset-password` | público | consome o link e define a nova palavra-passe |
 | POST | `/api/auth/register` | ADMIN | cria conta (não há registo público) |
 | GET | `/api/users` | ADMIN | lista paginada |

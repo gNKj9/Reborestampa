@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { validateBody } from "../middlewares/validate.js";
 import {
+  forgotPasswordIpRateLimiter,
   forgotPasswordRateLimiter,
   loginIpRateLimiter,
   loginRateLimiter,
@@ -31,6 +32,7 @@ authRouter.post("/refresh", refreshRateLimiter, authController.refresh);
 /** Recuperação de palavra-passe: público, com limite próprio. */
 authRouter.post(
   "/forgot-password",
+  forgotPasswordIpRateLimiter,
   forgotPasswordRateLimiter,
   validateBody(forgotPasswordSchema),
   authController.forgotPassword,

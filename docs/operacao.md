@@ -144,6 +144,7 @@ DATABASE_URL='postgresql://...branch...' npm run db:stats
 | Emails falham `401` | chave revogada | criar nova no Resend e atualizar |
 | Login 401 com password certa | conta desativada ou password rodada | `/painel/utilizadores`; repor |
 | Pedido de recuperação não chega | spam, ou destinatário errado | verificar Resend → Emails |
+| Recuperação responde 429 | limite por IP (15/15 min) ou por email (3/15 min) | esperar; é intencional |
 
 Cada erro da API devolve um `requestId`; procurá-lo nos logs da Render encontra o
 pedido exato.
