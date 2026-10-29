@@ -13,6 +13,7 @@ Está em produção em <https://reborestampa.onrender.com>.
 - Página institucional: técnicas, processo, produção, exemplar de trabalho, empresa e contactos.
 - Formulário de contacto real (nome, email, empresa, telefone, mensagem) com honeypot e limite por IP.
 - Página de política de privacidade e dados de contacto da empresa.
+- `sitemap.xml` e `robots.txt` explícitos (área reservada e recuperação fora dos índices).
 - Marca aplicada (logotipo, favicon, imagem de partilha) e dados estruturados para pesquisa.
 
 **Área reservada** (`/painel`, sessão com refresh token rotativo)
@@ -411,13 +412,17 @@ o pedido guardado é a fonte de verdade.
 
 | Tema | Estado | Quando corrigir | Como |
 | --- | --- | --- | --- |
-| **Duas tabs a renovar ao mesmo tempo** | A rotação estrita pode revogar a família e provocar logout. Na prática exige duas tabs a expirar no mesmo segundo. | Quando alguém relatar logout inesperado. | Duas opções: trava entre tabs no cliente (`localStorage` + `BroadcastChannel`, sem mexer no servidor) ou janela de tolerância de ~10 s na deteção de reutilização. A segunda enfraquece o teste de reutilização imediata; a primeira não. |
 | **Rate limiting em memória** | Correto com uma instância (o caso atual). | Quando houver mais de uma instância. | Store partilhado (Upstash Redis ou equivalente) com o mesmo contrato do `express-rate-limit`. |
 | **CSP sem nonce** | Só headers básicos no `next.config.ts`; o export estático impede nonce por pedido. | Antes de lidar com dados mais sensíveis do que contactos. | Passar a servir o Next com processo próprio (Render suporta) e gerar nonce no middleware. Deixa de ser um serviço único. |
 | **Backups e monitorização** | Não automatizados. | Antes de a empresa depender do painel no dia a dia. | Monitor de uptime com alerta + procedimento de restauro do Neon testado. |
 
 ### Decisões conscientes (não são defeitos)
 
+- **Sessões em várias abas**: a renovação é serializada por um cadeado em
+  `localStorage` (`utils/crossTabLock.ts`), com validade de 5 s. Quem não o apanha
+  em 2,5 s segue mesmo assim — prefere-se uma corrida rara a um bloqueio. Assim a
+  rotação estrita do refresh token mantém-se, sem logout por duas abas expirarem
+  ao mesmo tempo.
 - **`AuthGuard` é conveniência de UI.** A autorização real é feita na API, rota a rota; o frontend nunca é fonte de verdade.
 - **Sem verificação de email e sem MFA.** A recuperação de palavra-passe existe e
   é feita por link de email; a verificação de endereço no registo continua a não

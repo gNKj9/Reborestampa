@@ -1,3 +1,4 @@
+import { acquireCrossTabLock, REFRESH_LOCK_KEY } from "@/utils/crossTabLock";
 import type {
   ApiErrorBody,
   PublicUser,
@@ -88,6 +89,10 @@ async function toApiError(response: Response): Promise<ApiError> {
  */
 export function refreshSession(): Promise<SessionPayload | null> {
   refreshInFlight ??= (async () => {
+    // Serializa a renovação entre abas: o refresh token é um cookie partilhado
+    // e duas rotações simultâneas fariam o servidor revogar a família.
+    const release = await acquireCrossTabLock(REFRESH_LOCK_KEY);
+
     try {
       const response = await fetch(`${API_URL}/auth/refresh`, {
         method: "POST",
@@ -115,6 +120,7 @@ export function refreshSession(): Promise<SessionPayload | null> {
       sessionListener?.(null);
       return null;
     } finally {
+      release?.();
       refreshInFlight = null;
     }
   })();
@@ -172,3 +178,9 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
 
 export { API_URL };
 export type { PublicUser, SessionPayload };
+
+// Gancho para testes de browser (duas abas). O build de produção remove este
+// bloco: `process.env.NODE_ENV` é substituído literalmente pelo Next.
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+  (window as unknown as Record<string, unknown>).__rbRefresh = refreshSession;
+}

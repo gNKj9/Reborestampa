@@ -149,11 +149,6 @@ jobs:
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
 
-      # O cliente Prisma é gerado (não vive no repositório). Sem este passo,
-      # o tsc falha com TS2307 e uma cascata de tipos implícitos.
-      - name: Gerar cliente Prisma
-        run: npm run db:generate
-
       - name: Verificar tipos
         run: npm run typecheck
 
