@@ -80,7 +80,10 @@ Reborestampa/
 │   ├── Dockerfile                 # imagem única (site + API) para PaaS
 │   └── start.sh                   # migrações + seed + arranque
 ├── scripts/
-│   └── setup-env.py               # gera segredos e password do admin
+│   ├── setup-env.py               # gera segredos e password do admin
+│   └── preflight.sh               # 20 verificações contra produção
+├── docs/
+│   └── operacao.md                # runbook: contas, deploy, restauro, handover
 ├── .github/workflows/ci.yml       # CI: tipos, builds e smoke tests
 ├── docker-compose.yml
 ├── render.yaml                    # blueprint do deploy gratuito
@@ -161,6 +164,8 @@ estiver noutro endereço.
 | backend  | `npm run db:deploy`    | aplica migrações (produção/CI)                |
 | backend  | `npm run db:seed`      | cria o administrador inicial (idempotente)    |
 | backend  | `npm run db:studio`    | Prisma Studio                                 |
+| backend  | `npm run db:stats`     | fotografia da base (utilizadores, pedidos, auditoria) |
+| raiz     | `bash scripts/preflight.sh` | verificação pós-deploy contra um URL     |
 | backend  | `bash tests/smoke.sh`  | smoke test end-to-end (precisa da API a correr) |
 | backend  | `bash tests/smoke-admin.sh` | contactos, papéis e palavras-passe (precisa de `ADMIN_PASSWORD`) |
 | frontend | `npm run dev` / `build` / `start` | desenvolvimento / build / servidor |
@@ -191,6 +196,25 @@ manualmente (Actions → CI → Run workflow). Dois jobs independentes:
 
 Em caso de falha, os logs da API são impressos no fim do job. Os segredos usados
 no CI são efémeros e não correspondem a nenhum ambiente real.
+
+---
+
+## Operação
+
+O runbook completo está em **`docs/operacao.md`**: propriedade das contas,
+administração, deploy e rollback, rotação de segredos, backup/restauro do Neon,
+monitorização e checklist de passagem de testemunho.
+
+Duas ferramentas para o dia a dia:
+
+```bash
+BASE_URL=https://reborestampa.onrender.com bash scripts/preflight.sh
+cd backend && DATABASE_URL='postgresql://…' npm run db:stats
+```
+
+O `preflight.sh` verifica 20 coisas (páginas, API, cabeçalhos, recuperação) e sai
+com código 1 se alguma falhar. O `db:stats` imprime o estado da base e avisa se só
+existir um administrador ativo.
 
 ---
 
@@ -439,8 +463,9 @@ o pedido guardado é a fonte de verdade.
 
 1. **Domínio próprio** — credibilidade e entregabilidade (o Resend passa a enviar
    do domínio da empresa, incluindo os links de recuperação). Custo ~12 €/ano.
-2. **Uptime e backups** — monitor com alerta por email e procedimento de restauro
-   do Neon escrito e testado.
+2. **Passagem de testemunho e operação** — executar `docs/operacao.md`: contas na
+   empresa, segunda conta de administrador, monitor de uptime e um ensaio de
+   restauro do Neon.
 3. **CSP com nonce** — exige deixar o export estático e servir o Next com processo
    próprio (Render suporta, mas deixa de ser um serviço único).
 4. **Portefólio** — mais casos, filtro por técnica e fotografias da peça completa.
