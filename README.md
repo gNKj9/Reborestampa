@@ -260,6 +260,15 @@ Limitações do plano gratuito, para decidir com informação:
 
 ### Aviso de contactos por email (Resend)
 
+O modelo vive em `backend/src/services/email.templates.ts` e é partilhado com o
+email de recuperação: papel `#f3efe7`, tinta `#17140f` e terracota `#c2185b`,
+serifa no nome e sans no resto. Sem imagens (metade dos clientes bloqueia-as), com
+versão em texto simples, `preheader` para a pré-visualização, `reply_to` no
+requerente e um botão de resposta. Em ecrãs até 480 px, contactos e botão passam a
+uma coluna.
+
+![Pedido de contacto](docs/email/pedido-de-contacto.png)
+
 Sem `RESEND_API_KEY`, o site funciona e os pedidos ficam só na caixa de entrada.
 Cada pedido guarda o estado do aviso (`PENDING`, `SENT`, `FAILED`, `DISABLED`) e o
 painel mostra-o no cartão — não é preciso abrir logs para saber se o email saiu.
