@@ -12,6 +12,8 @@ import { formatDateTime } from "@/utils/format";
 
 const ACTION_LABELS: Record<string, string> = {
   "auth.password_changed": "Alterou a própria palavra-passe",
+  "auth.password_reset_requested": "Pediu recuperação de palavra-passe",
+  "auth.password_reset_completed": "Redefiniu a palavra-passe por link de email",
   "user.created": "Criou uma conta",
   "user.role_changed": "Alterou um papel",
   "user.activated": "Reativou uma conta",

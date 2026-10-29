@@ -1,8 +1,14 @@
 import type { Request, Response } from "express";
 import { env } from "../config/env.js";
-import { loginSchema, type LoginInput } from "../models/auth.schema.js";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  resetPasswordWithTokenSchema,
+  type LoginInput,
+} from "../models/auth.schema.js";
 import { createUserSchema, changePasswordSchema, type CreateUserInput } from "../models/user.schema.js";
 import { authService } from "../services/auth.service.js";
+import { passwordResetService } from "../services/password-reset.service.js";
 import { AppError } from "../utils/AppError.js";
 import {
   clearRefreshCookie,
@@ -81,6 +87,26 @@ export const authController = {
     const input = createUserSchema.parse(req.body) as CreateUserInput;
     const user = await authService.register(input);
     res.status(201).json({ user });
+  },
+
+  /** Pede o link de recuperação. Resposta uniforme, exista ou não a conta. */
+  async forgotPassword(req: Request, res: Response): Promise<void> {
+    const input = forgotPasswordSchema.parse(req.body);
+    const { devToken } = await passwordResetService.request(input.email, {
+      ip: req.ip,
+    });
+
+    res.status(202).json({
+      ok: true,
+      ...(devToken ? { devToken } : {}),
+    });
+  },
+
+  /** Consome o link e define a nova palavra-passe. */
+  async resetPassword(req: Request, res: Response): Promise<void> {
+    const input = resetPasswordWithTokenSchema.parse(req.body);
+    await passwordResetService.reset(input, { ip: req.ip });
+    res.status(204).send();
   },
 
   /** Alteração da própria palavra-passe; mantém viva a sessão atual. */

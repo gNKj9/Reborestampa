@@ -18,7 +18,7 @@ Está em produção em <https://reborestampa.onrender.com>.
 **Área reservada** (`/painel`, sessão com refresh token rotativo)
 - **Contactos**: caixa de entrada com pesquisa, filtros por estado, paginação, exportação CSV, nota interna e ação de resposta por email.
 - **Utilizadores**: criação de contas, papéis (`ADMIN`/`EDITOR`/`VIEWER`), ativação, reposição de palavra-passe com gerador.
-- **Conta**: alteração da própria palavra-passe (exige a atual e termina as outras sessões).
+- **Conta**: alteração da própria palavra-passe (exige a atual e termina as outras sessões) e recuperação por link de email (30 minutos, uso único).
 - **Atividade**: registo de auditoria de tudo o que é administrativo.
 
 **Por fazer**: o domínio de negócio (clientes, encomendas, referências, provas de cor).
@@ -311,6 +311,8 @@ menos 32 caracteres. Variáveis declaradas mas vazias são tratadas como ausente
 | POST | `/api/auth/logout` | cookie de refresh | revoga e limpa o cookie |
 | GET | `/api/auth/me` | autenticado | perfil atual |
 | PATCH | `/api/auth/password` | autenticado | altera a própria palavra-passe (exige a atual) |
+| POST | `/api/auth/forgot-password` | público (3/15 min por IP+email) | pede o link de recuperação (resposta uniforme) |
+| POST | `/api/auth/reset-password` | público | consome o link e define a nova palavra-passe |
 | POST | `/api/auth/register` | ADMIN | cria conta (não há registo público) |
 | GET | `/api/users` | ADMIN | lista paginada |
 | POST | `/api/users` | ADMIN | cria conta |
@@ -370,6 +372,13 @@ o pedido guardado é a fonte de verdade.
   pelos 15 minutos do access token). Custa uma leitura por chave primária.
 - Alteração da própria palavra-passe exige a atual e termina as **outras** sessões;
   a reposição por um administrador termina **todas** as sessões dessa conta.
+- **Recuperação por email**: token opaco de 256 bits, guardado apenas como SHA-256,
+  válido 30 minutos e de uso único (o consumo é atómico — dois cliques no mesmo
+  link não redefinem duas vezes). Um pedido novo invalida os links anteriores e a
+  redefinição termina todas as sessões. A resposta é idêntica para emails
+  existentes e inexistentes, para não permitir enumerar contas.
+  Fora de produção e **sem** `RESEND_API_KEY`, a resposta inclui `devToken` para
+  se poder testar o fluxo localmente; em produção esse campo nunca é devolvido.
 - Duas travas de administração: ninguém altera o próprio papel e o sistema recusa
   remover o último administrador ativo.
 - RBAC por middleware, declarado rota a rota (`ADMIN`, `EDITOR`, `VIEWER`).
@@ -398,33 +407,33 @@ o pedido guardado é a fonte de verdade.
 
 ## Limites conhecidos / decisões a rever
 
-- **Multi-separador**: a rotação estrita revoga a família em caso de reutilização.
-  Duas tabs a renovar exatamente ao mesmo tempo podem provocar logout. Aceitável
-  para o âmbito atual; se incomodar, introduzir uma janela de tolerância de poucos
-  segundos em `auth.service.refresh`.
-- **Rate limiting em memória**: correto com uma instância (o caso atual). Se um dia
-  houver várias, passa a ser por instância e precisa de um store partilhado.
-- **Guard de UI** (`AuthGuard`) é conveniência de navegação. A autorização real é
-  sempre feita na API; o frontend nunca é fonte de verdade.
-- **CSP do Next.js**: para já só há headers básicos (`next.config.ts`). Uma CSP
-  completa exige nonce por pedido, o que obriga a servir o Next com processo
-  próprio em vez de export estático.
-- **Sem verificação de email, recuperação por email ou MFA** — a palavra-passe
-  muda-se com a atual; se for esquecida, um administrador repõe.
-- **Aviso por email**: enquanto não houver domínio verificado no Resend, o
-  remetente `onboarding@resend.dev` só entrega ao email dono da conta.
-- **Política de privacidade**: o texto é uma base técnica, com os dados fornecidos
-  pela empresa. O prazo de conservação (24 meses) deve ser confirmado por quem
-  responde pelo tratamento de dados.
-- **Portefólio**: a secção `Trabalhos` mostra um trabalho antigo e concluído, sem
-  reserva de confidencialidade assumida pela empresa.
+### Dívida técnica com gatilho
 
----
+| Tema | Estado | Quando corrigir | Como |
+| --- | --- | --- | --- |
+| **Duas tabs a renovar ao mesmo tempo** | A rotação estrita pode revogar a família e provocar logout. Na prática exige duas tabs a expirar no mesmo segundo. | Quando alguém relatar logout inesperado. | Duas opções: trava entre tabs no cliente (`localStorage` + `BroadcastChannel`, sem mexer no servidor) ou janela de tolerância de ~10 s na deteção de reutilização. A segunda enfraquece o teste de reutilização imediata; a primeira não. |
+| **Rate limiting em memória** | Correto com uma instância (o caso atual). | Quando houver mais de uma instância. | Store partilhado (Upstash Redis ou equivalente) com o mesmo contrato do `express-rate-limit`. |
+| **CSP sem nonce** | Só headers básicos no `next.config.ts`; o export estático impede nonce por pedido. | Antes de lidar com dados mais sensíveis do que contactos. | Passar a servir o Next com processo próprio (Render suporta) e gerar nonce no middleware. Deixa de ser um serviço único. |
+| **Backups e monitorização** | Não automatizados. | Antes de a empresa depender do painel no dia a dia. | Monitor de uptime com alerta + procedimento de restauro do Neon testado. |
+
+### Decisões conscientes (não são defeitos)
+
+- **`AuthGuard` é conveniência de UI.** A autorização real é feita na API, rota a rota; o frontend nunca é fonte de verdade.
+- **Sem verificação de email e sem MFA.** A recuperação de palavra-passe existe e
+  é feita por link de email; a verificação de endereço no registo continua a não
+  existir porque as contas são criadas por um administrador.
+- **Aviso por email com `onboarding@resend.dev`.** Enquanto não houver domínio verificado, o Resend só entrega ao email dono da conta. Com domínio, trocar `CONTACT_NOTIFY_FROM` e `CONTACT_NOTIFY_TO`. A recuperação de palavra-passe usa o mesmo remetente — com o domínio verificado passa a chegar a qualquer conta.
+- **Política de privacidade** é uma base técnica com os dados fornecidos pela empresa. O prazo de conservação (24 meses) deve ser confirmado por quem responde pelo tratamento.
+
+### Notas editoriais
+
+- **Portefólio**: a secção `Trabalhos` mostra um trabalho antigo e concluído. A empresa confirmou que não há reserva de confidencialidade nem autorização pendente.
+- **Textos institucionais**: factos do perfil oficial da empresa e dados de contacto fornecidos por ela; as descrições de processo continuam a ser proposta editorial.
 
 ## Próximos passos sugeridos
 
 1. **Domínio próprio** — credibilidade e entregabilidade (o Resend passa a enviar
-   do domínio da empresa). Custo ~12 €/ano.
+   do domínio da empresa, incluindo os links de recuperação). Custo ~12 €/ano.
 2. **Uptime e backups** — monitor com alerta por email e procedimento de restauro
    do Neon escrito e testado.
 3. **CSP com nonce** — exige deixar o export estático e servir o Next com processo

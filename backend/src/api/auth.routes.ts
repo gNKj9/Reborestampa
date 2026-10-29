@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { validateBody } from "../middlewares/validate.js";
 import {
+  forgotPasswordRateLimiter,
   loginIpRateLimiter,
   loginRateLimiter,
   refreshRateLimiter,
@@ -9,6 +10,10 @@ import { authenticate } from "../middlewares/authenticate.js";
 import { authorize } from "../middlewares/authorize.js";
 import { loginSchema } from "../models/auth.schema.js";
 import { changePasswordSchema, createUserSchema } from "../models/user.schema.js";
+import {
+  forgotPasswordSchema,
+  resetPasswordWithTokenSchema,
+} from "../models/auth.schema.js";
 import { authController } from "./auth.controller.js";
 
 export const authRouter = Router();
@@ -22,6 +27,21 @@ authRouter.post(
 );
 
 authRouter.post("/refresh", refreshRateLimiter, authController.refresh);
+
+/** Recuperação de palavra-passe: público, com limite próprio. */
+authRouter.post(
+  "/forgot-password",
+  forgotPasswordRateLimiter,
+  validateBody(forgotPasswordSchema),
+  authController.forgotPassword,
+);
+
+authRouter.post(
+  "/reset-password",
+  refreshRateLimiter,
+  validateBody(resetPasswordWithTokenSchema),
+  authController.resetPassword,
+);
 
 authRouter.post("/logout", authController.logout);
 

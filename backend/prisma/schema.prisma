@@ -51,6 +51,7 @@ model User {
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
   refreshTokens     RefreshToken[]
+  passwordResets    PasswordResetToken[]
   handledRequests   ContactRequest[] @relation("HandledBy")
   notedRequests     ContactRequest[] @relation("NoteBy")
 
@@ -123,4 +124,21 @@ model AuditLog {
   @@index([createdAt])
   @@index([entity, entityId])
   @@map("audit_logs")
+}
+
+/// Pedidos de recuperação de palavra-passe. Guarda-se apenas o SHA-256 do token;
+/// o valor em claro só existe no link enviado por email.
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(64)
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }

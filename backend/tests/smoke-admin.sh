@@ -35,6 +35,22 @@ print(cur)
 PY
 }
 
+jget_opt() {
+  python3 - "$OUT" "$1" <<'PY'
+import json, sys
+data = json.load(open(sys.argv[1]))
+cur = data
+for part in sys.argv[2].split("."):
+    if isinstance(cur, dict):
+        cur = cur.get(part)
+    elif isinstance(cur, list):
+        cur = cur[int(part)]
+    else:
+        cur = None
+print(cur)
+PY
+}
+
 ok() { pass=$((pass + 1)); printf '  ok    %s\n' "$1"; }
 
 expect() {
@@ -215,6 +231,48 @@ expect 200 "$(code -H 'content-type: application/json' \
   -d "{\"email\":\"$ADMIN_EMAIL\",\"password\":\"Admin-Nova-Forte-2026\"}" "$API/api/auth/login")" \
   "palavra-passe nova do administrador entra"
 
+echo "== Recuperação de palavra-passe por email =="
+RECOVER_EMAIL="recupera+$(date +%s)@exemplo.pt"
+expect 201 "$(code -H "authorization: Bearer $TOKEN_A" -H 'content-type: application/json' \
+  -d "{\"name\":\"Rita Recupera\",\"email\":\"$RECOVER_EMAIL\",\"password\":\"Recupera-Forte-2026\",\"role\":\"VIEWER\"}" \
+  "$API/api/users")" "conta para testar a recuperação"
+RECOVER_ID="$(jget user.id)"
+
+expect 202 "$(code -H 'content-type: application/json' \
+  -d "{\"email\":\"$RECOVER_EMAIL\"}" "$API/api/auth/forgot-password")" "pedido de recuperação aceite"
+RESET_TOKEN="$(jget_opt devToken)"
+assert "$( [ -n "$RESET_TOKEN" ] && echo 1 || echo 0 )" "token devolvido fora de produção (devToken)"
+
+expect 202 "$(code -H 'content-type: application/json' \
+  -d '{"email":"nao-existe@exemplo.pt"}' "$API/api/auth/forgot-password")" \
+  "email desconhecido recebe a mesma resposta"
+MISSING="$(jget_opt devToken)"
+assert "$( [ "$MISSING" = "None" ] && echo 1 || echo 0 )" "email desconhecido não gera token"
+
+expect 422 "$(code -H 'content-type: application/json' \
+  -d "{\"token\":\"$RESET_TOKEN\",\"newPassword\":\"curta\"}" "$API/api/auth/reset-password")" \
+  "palavra-passe fraca recusada"
+
+expect 204 "$(code -H 'content-type: application/json' \
+  -d "{\"token\":\"$RESET_TOKEN\",\"newPassword\":\"Recuperada-Forte-2026\"}" \
+  "$API/api/auth/reset-password")" "link consome e define a nova palavra-passe"
+
+expect 401 "$(code -H 'content-type: application/json' \
+  -d "{\"email\":\"$RECOVER_EMAIL\",\"password\":\"Recupera-Forte-2026\"}" "$API/api/auth/login")" \
+  "palavra-passe antiga deixa de funcionar"
+
+expect 200 "$(code -H 'content-type: application/json' \
+  -d "{\"email\":\"$RECOVER_EMAIL\",\"password\":\"Recuperada-Forte-2026\"}" "$API/api/auth/login")" \
+  "palavra-passe nova entra"
+
+expect 400 "$(code -H 'content-type: application/json' \
+  -d "{\"token\":\"$RESET_TOKEN\",\"newPassword\":\"Outra-Forte-2026\"}" \
+  "$API/api/auth/reset-password")" "link não pode ser reutilizado"
+
+expect 400 "$(code -H 'content-type: application/json' \
+  -d '{"token":"token-inventado-com-tamanho-suficiente","newPassword":"Outra-Forte-2026"}' \
+  "$API/api/auth/reset-password")" "token inventado recusado"
+
 echo "== Histórico de auditoria =="
 expect 401 "$(code "$API/api/audit")" "sem sessão → 401"
 expect 403 "$(code -H "authorization: Bearer $TOKEN_B" "$API/api/audit")" \
@@ -228,7 +286,7 @@ data = json.load(open(sys.argv[1]))
 print(" ".join(sorted({item["action"] for item in data["items"]})))
 PY
 )"
-for action in user.created user.role_changed user.password_reset auth.password_changed contact.status_changed contact.note_updated; do
+for action in user.created user.role_changed user.password_reset auth.password_changed contact.status_changed contact.note_updated auth.password_reset_requested auth.password_reset_completed; do
   case " $ACTIONS " in
     *" $action "*) ok "registo presente: $action" ;;
     *) fail=$((fail + 1)); printf '  FALHA registo ausente: %s (vistos: %s)\n' "$action" "$ACTIONS" ;;

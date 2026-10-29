@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "@/components/Button";
@@ -108,6 +109,15 @@ export function LoginForm() {
       <Button type="submit" variant="primary" className="w-full" disabled={submitting}>
         {submitting ? "A entrar…" : "Entrar"}
       </Button>
+
+      <p className="text-center">
+        <Link
+          href="/recuperar"
+          className="text-[0.76rem] text-ink-soft underline decoration-line underline-offset-4 transition-colors hover:text-accent"
+        >
+          Esqueceste-te da palavra-passe?
+        </Link>
+      </p>
 
       <p className="text-center text-[0.72rem] leading-relaxed text-ink-muted">
         Acesso restrito. As contas são criadas pelo administrador da plataforma.

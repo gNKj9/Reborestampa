@@ -69,6 +69,29 @@ export const loginIpRateLimiter = rateLimit({
   },
 });
 
+/**
+ * Recuperação de palavra-passe: poucos pedidos por IP e por email. Sem isto,
+ * o formulário serve para inundar a caixa de alguém com links.
+ */
+export const forgotPasswordRateLimiter = rateLimit({
+  windowMs: env.AUTH_RATE_LIMIT_WINDOW_MS,
+  limit: 3,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    const email =
+      typeof req.body?.email === "string" ? req.body.email.toLowerCase() : "";
+    return `${ipKeyGenerator(req.ip ?? "unknown")}:${email}`;
+  },
+  handler: (_req, res) => {
+    res.status(429).json(
+      jsonLimitResponse(
+        "Demasiados pedidos de recuperação. Aguarda alguns minutos.",
+      ),
+    );
+  },
+});
+
 /** Renovação de sessão: limite mais folgado, mas continua limitado. */
 export const refreshRateLimiter = rateLimit({
   windowMs: env.AUTH_RATE_LIMIT_WINDOW_MS,

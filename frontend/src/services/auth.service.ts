@@ -29,6 +29,27 @@ export const authService = {
     return response.user;
   },
 
+  /** Pede o link de recuperação. Resposta uniforme, exista ou não a conta. */
+  requestPasswordReset(email: string): Promise<{ ok: true; devToken?: string }> {
+    return apiRequest<{ ok: true; devToken?: string }>(
+      "/auth/forgot-password",
+      { method: "POST", body: JSON.stringify({ email }) },
+      { retryOnAuthError: false },
+    );
+  },
+
+  /** Consome o link do email e define a nova palavra-passe. */
+  async resetPasswordWithToken(input: {
+    token: string;
+    newPassword: string;
+  }): Promise<void> {
+    await apiRequest<void>(
+      "/auth/reset-password",
+      { method: "POST", body: JSON.stringify(input) },
+      { retryOnAuthError: false },
+    );
+  },
+
   async changePassword(input: {
     currentPassword: string;
     newPassword: string;

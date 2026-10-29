@@ -32,6 +32,71 @@ export const emailService = {
     return Boolean(env.RESEND_API_KEY);
   },
 
+  async sendPasswordReset(params: {
+    to: string;
+    name: string;
+    token: string;
+    expiresMinutes: number;
+  }): Promise<void> {
+    if (!env.RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY não configurada");
+    }
+
+    const link = `${env.PUBLIC_SITE_URL}/redefinir?token=${encodeURIComponent(params.token)}`;
+    const name = escapeHtml(params.name);
+    const safeLink = escapeHtml(link);
+
+    const html = `
+      <div style="font-family:ui-sans-serif,system-ui,sans-serif;color:#17140f;max-width:560px">
+        <p style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#6b6459">Reborestampa</p>
+        <h1 style="font-size:22px;margin:12px 0 16px">Redefinir palavra-passe</h1>
+        <p style="font-size:14px;line-height:1.6">Olá ${name}, recebemos um pedido para redefinir a palavra-passe da tua conta.</p>
+        <p style="margin:24px 0">
+          <a href="${safeLink}" style="background:#c2185b;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-size:14px">
+            Escolher nova palavra-passe
+          </a>
+        </p>
+        <p style="font-size:13px;color:#6b6459;line-height:1.6">
+          O link expira em ${params.expiresMinutes} minutos e só pode ser usado uma vez.
+          Se não pediste nada, ignora este email — a palavra-passe atual continua válida.
+        </p>
+      </div>
+    `.trim();
+
+    const text = [
+      "Redefinir palavra-passe — Reborestampa",
+      "",
+      `Olá ${params.name},`,
+      "Recebemos um pedido para redefinir a palavra-passe da tua conta.",
+      "",
+      link,
+      "",
+      `O link expira em ${params.expiresMinutes} minutos e só pode ser usado uma vez.`,
+      "Se não pediste nada, ignora este email.",
+    ].join("\n");
+
+    const response = await fetch(RESEND_ENDPOINT, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: env.CONTACT_NOTIFY_FROM,
+        to: [params.to],
+        subject: "Redefinir palavra-passe — Reborestampa",
+        html,
+        text,
+      }),
+      signal: AbortSignal.timeout(8_000),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`Resend ${response.status}: ${body.slice(0, 300)}`);
+    }
+  },
+
   async sendContactNotification(contact: ContactPayload): Promise<void> {
     if (!env.RESEND_API_KEY) {
       logger.debug("Notificação de contacto desativada (sem RESEND_API_KEY)");
